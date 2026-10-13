@@ -1,0 +1,2491 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>缓冲液配制计算器</title>
+<style>
+  :root {
+    --bg: #f5f6f8; --card: #ffffff; --line: #e3e6ea; --txt: #1f2329;
+    --muted: #6b7280; --pri: #2563eb; --pri-d: #1d4ed8;
+    --warn-bg: #fff7ed; --warn-bd: #fdba74; --warn-tx: #9a3412;
+    --err-bg: #fef2f2; --err-bd: #fca5a5; --err-tx: #b91c1c;
+    --ok: #15803d;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; font-family: "Microsoft YaHei", "PingFang SC", "Segoe UI", sans-serif; background: var(--bg); color: var(--txt); font-size: 14px; }
+  header { background: #1e293b; color: #fff; padding: 12px 20px; }
+  header h1 { margin: 0; font-size: 18px; font-weight: 600; }
+  header .sub { font-size: 12px; color: #94a3b8; margin-top: 2px; }
+  nav.tabs { display: flex; gap: 4px; background: #e9edf2; padding: 6px 20px 0; }
+  nav.tabs button { border: none; background: transparent; padding: 9px 18px; font-size: 14px; cursor: pointer; border-radius: 8px 8px 0 0; color: var(--muted); }
+  nav.tabs button.active { background: var(--bg); color: var(--pri); font-weight: 600; }
+  main { padding: 16px 20px 40px; }
+  .tabpage { display: none; }
+  .tabpage.active { display: block; }
+  .pairrow { display: flex; gap: 16px; align-items: stretch; flex-wrap: wrap; margin-bottom: 16px; }
+  .pairrow > .card { flex: 1 1 460px; min-width: 380px; }
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 14px 16px; }
+  .card h3 { margin: 0 0 10px; font-size: 14px; color: var(--pri); border-bottom: 1px solid var(--line); padding-bottom: 6px; }
+  .resultzone { margin-top: 16px; display: flex; flex-direction: column; gap: 12px; }
+  .row { display: flex; align-items: center; gap: 8px; margin: 6px 0; flex-wrap: wrap; }
+  input[type=number], input[type=text], select, textarea { border: 1px solid var(--line); border-radius: 6px; padding: 5px 8px; font-size: 13px; font-family: inherit; }
+  input[type=number] { width: 90px; max-width: 100%; }
+  input[type=number]:focus-visible, input[type=text]:focus-visible, select:focus-visible, textarea:focus-visible { outline: none; border-color: var(--pri); box-shadow: 0 0 0 3px rgba(37,99,235,.16); }
+  textarea.calib-recipe { display: block; width: 100%; min-height: 130px; margin-top: 6px; font-family: Consolas, "Courier New", monospace; font-size: 12px; line-height: 1.55; resize: vertical; }
+  input.wide { width: 100%; }
+  .sysrow { display: flex; align-items: center; gap: 8px; padding: 4px 6px; margin: 0 -6px; border-radius: 6px; flex-wrap: wrap; }
+  .sysrow:hover { background: #f1f5fb; }
+  .sysrow .nm { flex: 1; }
+  .sysrow input[type=number] { width: 80px; }
+  .muted { color: var(--muted); font-size: 12px; }
+  button.primary { background: var(--pri); color: #fff; border: none; padding: 8px 22px; border-radius: 8px; font-size: 14px; cursor: pointer; }
+  button.primary:hover { background: var(--pri-d); }
+  button.ghost { background: #fff; border: 1px solid var(--line); padding: 6px 14px; border-radius: 8px; cursor: pointer; font-size: 13px; }
+  button.ghost:hover { background: #f1f5fb; border-color: #cbd5e1; }
+  button.small { padding: 3px 10px; font-size: 12px; border-radius: 6px; }
+  button.primary:focus-visible, button.ghost:focus-visible { outline: 3px solid #93c5fd; outline-offset: 2px; }
+  button.primary:disabled, button.ghost:disabled { opacity: .55; cursor: not-allowed; }
+  table.res { width: 100%; border-collapse: collapse; }
+  table.res th, table.res td { text-align: left; padding: 6px 8px; border-bottom: 1px solid var(--line); font-size: 13px; }
+  table.res td.num { font-variant-numeric: tabular-nums; font-weight: 600; }
+  table.res tr:hover td, .tbl-admin tr:hover td { background: #f8fafc; }
+  tr.water td { color: var(--ok); }
+  .warnbox { background: var(--warn-bg); border: 1px solid var(--warn-bd); color: var(--warn-tx); border-radius: 8px; padding: 8px 12px; font-size: 13px; }
+  .errbox { background: var(--err-bg); border: 1px solid var(--err-bd); color: var(--err-tx); border-radius: 8px; padding: 8px 12px; font-size: 13px; }
+  .stat { display: inline-block; margin: 3px 14px 3px 0; font-size: 13px; }
+  .stat b { font-variant-numeric: tabular-nums; }
+  .slider-row { display: flex; align-items: center; gap: 10px; margin: 10px 0; }
+  .slider-row .lab { width: 110px; font-size: 13px; }
+  .slider-row input[type=range] { flex: 1; }
+  .slider-row input[type=number] { width: 100px; }
+  .big-result { font-size: 20px; font-weight: 700; color: var(--pri); margin: 6px 0; }
+  /* modal */
+  .overlay { position: fixed; inset: 0; background: rgba(0,0,0,.35); display: none; align-items: center; justify-content: center; z-index: 50; }
+  .overlay.show { display: flex; }
+  .modal { background: #fff; border-radius: 12px; padding: 18px 20px; width: 560px; max-width: 92vw; max-height: 86vh; overflow: auto; }
+  .modal h3 { margin-top: 0; }
+  .modal .row label { width: 110px; font-size: 13px; }
+  .tbl-admin { width: 100%; border-collapse: collapse; font-size: 13px; }
+  .tbl-admin th, .tbl-admin td { border-bottom: 1px solid var(--line); padding: 6px 6px; text-align: left; }
+  .danger { color: var(--err-tx); }
+  /* 结果卡内小节与统计网格 */
+  .rcard-hd { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; border-bottom: 1px solid var(--line); padding-bottom: 8px; margin-bottom: 6px; }
+  .rcard-hd h3 { margin: 0; border: none; padding: 0; }
+  .rcard-hd .nm { color: var(--muted); font-size: 12px; font-weight: 400; }
+  .rcard-hd .hd-act { margin-left: auto; display: flex; gap: 8px; flex-wrap: wrap; }
+  .sec-t { margin: 14px 0 8px; font-size: 13px; font-weight: 600; color: var(--pri); border-bottom: 1px solid var(--line); padding-bottom: 5px; }
+  .statgrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 6px 18px; margin: 4px 0; }
+  .statgrid .stat { display: block; margin: 0; }
+  .empty-state { text-align: center; color: var(--muted); padding: 34px 16px; background: #f8fafc; border: 1px dashed var(--line); border-radius: 10px; }
+  /* 配制页 A/B 结果卡宽屏并排 */
+  .result-grid { display: grid; grid-template-columns: minmax(0,1fr); gap: 12px; }
+  @media (min-width: 1280px) { .result-grid.two { grid-template-columns: minmax(0,1fr) minmax(0,1fr); align-items: start; } }
+  /* 窄屏适配 */
+  nav.tabs { overflow-x: auto; }
+  nav.tabs button { white-space: nowrap; flex: 0 0 auto; }
+  @media (max-width: 560px) {
+    main { padding: 12px 10px 32px; }
+    header { padding: 10px 12px; }
+    nav.tabs { padding: 6px 10px 0; }
+    .pairrow > .card { min-width: 0; flex-basis: 100%; }
+    .card { padding: 12px; }
+    .sysrow .nm { flex: 1 1 100%; order: 5; padding-left: 24px; }
+    .sysrow input[type=number] { margin-left: auto; }
+  }
+  @media print {
+    header, nav.tabs, .noprint { display: none !important; }
+    body { background: #fff; }
+    .result-grid.two { grid-template-columns: 1fr; }
+  }
+
+    .dual-range {position:relative;height:38px;margin:8px 12px 18px;}
+    .range-track {position:absolute;left:0;right:0;top:17px;height:5px;background:#e2e8f0;border-radius:8px;}
+    #fracRangeFill {position:absolute;height:100%;background:#2563eb;border-radius:8px;}
+    .dual-range.range-invalid #fracRangeFill {background:#dc2626;}
+    .dual-range input[type=range] {position:absolute;inset:0;width:100%;height:38px;margin:0;background:transparent;appearance:none;pointer-events:none;}
+    .dual-range input[type=range]::-webkit-slider-thumb {appearance:none;width:21px;height:21px;border-radius:50%;background:white;border:3px solid #2563eb;pointer-events:auto;cursor:ew-resize;box-shadow:0 2px 5px #0002;}
+    .dual-range input[type=range]::-moz-range-thumb {width:16px;height:16px;border-radius:50%;background:white;border:3px solid #2563eb;pointer-events:auto;cursor:ew-resize;}
+    .dual-range input:focus-visible::-webkit-slider-thumb {outline:3px solid #93c5fd;outline-offset:2px;}
+    .chart-legend,.chart-readout {display:flex;gap:20px;flex-wrap:wrap;align-items:center;padding:12px 16px;border-radius:8px;background:#f1f5fb;}
+    .neut-detail-row {display:grid;grid-template-columns:minmax(0,3fr) minmax(0,2fr);gap:16px;align-items:start;}
+    @media (max-width:900px) {.neut-detail-row {grid-template-columns:minmax(0,1fr);}}
+    .chart-legend {color:#2563eb;font-size:14px;}
+    .chart-readout {min-height:24px;margin:8px 0 12px;font-variant-numeric:tabular-nums;}
+    .chart-readout b {color:#17243b;}
+</style>
+</head>
+<body>
+<header>
+  <h1>缓冲液配制计算器</h1>
+  <div class="sub">活度校正（扩展 Debye-Hückel / Davies）· 离子强度自洽迭代 · 参考常数约25 °C · 数据仅存本机浏览器</div>
+</header>
+<nav class="tabs">
+  <button data-tab="t1" class="active">缓冲液配制</button>
+  <button data-tab="t2">洗脱中和</button>
+  <button data-tab="t3">⚙ 母液与缓冲体系管理</button>
+  <button data-tab="t4">📋 实测记录与校准</button>
+</nav>
+<main>
+  <section id="t1" class="tabpage active">
+    <div class="pairrow">
+      <div class="card">
+        <h3>Buffer A 配方</h3>
+        <div class="row"><label>目标 pH</label><input type="number" id="pHA" step="0.05" min="0" max="14" value="7.4">
+          <label>定容体积 (mL)</label><input type="number" id="volA" step="1" min="0.1" value="250"></div>
+        <div class="muted">缓冲体系（PBS 填 × 倍数，其余填 mM）：</div>
+        <div id="t1ASys"></div>
+        <div class="muted" style="margin-top:6px">添加剂（可选）：</div>
+        <div id="t1AAdd"></div>
+      </div>
+      <div class="card">
+        <h3>Buffer B 配方 <span class="muted" style="font-weight:400">（不需要则不勾选任何体系）</span></h3>
+        <div class="row"><label>目标 pH</label><input type="number" id="pHB" step="0.05" min="0" max="14" value="7.4">
+          <label>定容体积 (mL)</label><input type="number" id="volB" step="1" min="0.1" value="100"></div>
+        <div class="muted">缓冲体系（PBS 填 × 倍数，其余填 mM）：</div>
+        <div id="t1BSys"></div>
+        <div class="muted" style="margin-top:6px">添加剂（可选）：</div>
+        <div id="t1BAdd"></div>
+      </div>
+    </div>
+    <div class="card noprint">
+      <h3>高级选项</h3>
+      <div class="row">
+        <label>离子强度模型：</label>
+        <label><input type="radio" name="model" value="edh" checked> 扩展 Debye-Hückel</label>
+        <label><input type="radio" name="model" value="davies"> Davies</label>
+        <label><input type="checkbox" id="empiricalRecipe" checked> 匹配条件时使用历史 PB 配比校准</label>
+      </div>
+      <div class="row">
+        <label><input type="checkbox" id="allowTitrant"> 允许使用 NaOH / HCl 微调（默认不使用）</label>
+      </div>
+      <div class="row" id="titrantConcRow" style="display:none">
+        <label>NaOH 浓度 (M)</label><input type="number" id="naohConc" value="1" step="0.1" min="0.01">
+        <label>HCl 浓度 (M)</label><input type="number" id="hclConc" value="1" step="0.1" min="0.01">
+      </div>
+      <div class="muted">提示：Gly 等单端母液体系，以及高 pH 下的 Arg-HCl，在缓冲体系配比吸收不了时必须借助酸碱才能命中目标 pH。</div>
+    </div>
+    <div class="row noprint" style="margin-top:12px">
+      <button class="primary" id="btnCalc">计 算</button>
+      <span class="muted">修改任何输入后点击计算刷新结果；结果显示在下方</span>
+    </div>
+    <div class="resultzone" id="resultZone"></div>
+  </section>
+
+  <section id="t2" class="tabpage">
+    <div class="pairrow">
+      <div class="card">
+        <h3>Buffer A（平衡/上样液）</h3>
+        <div class="row"><label>Buffer A 的 pH</label><input type="number" id="nPHA" value="7.4" step="0.05" style="width:70px"></div>
+        <div class="muted">缓冲体系（PBS 填 × 倍数，其余填 mM）：</div>
+        <div id="nSysPickA"></div>
+        <div class="muted" style="margin-top:6px">添加剂（可选）：</div>
+        <div id="nAddPickA"></div>
+      </div>
+      <div class="card">
+        <h3>Buffer B（洗脱液）</h3>
+        <div class="row"><label>Buffer B 的 pH</label><input type="number" id="nPHB" value="3.0" step="0.05" style="width:70px"></div>
+        <div class="muted">缓冲体系（PBS 填 × 倍数，其余填 mM）：</div>
+        <div id="nSysPickB"></div>
+        <div class="muted" style="margin-top:6px">添加剂（可选）：</div>
+        <div id="nAddPickB"></div>
+      </div>
+    </div>
+    <div class="pairrow">
+      <div class="card">
+        <h3>样品与目标</h3>
+        <div class="row"><label>Buffer B 占比范围</label>
+          <input aria-label="Buffer B下限" type="number" id="numFracBLo" min="0" max="100" step="0.5" value="40">% —
+          <input aria-label="Buffer B上限" type="number" id="numFracB" min="0" max="100" step="0.5" value="70">%</div>
+        <div class="dual-range">
+          <div class="range-track"><div id="fracRangeFill"></div></div>
+          <input aria-label="拖动Buffer B下限" type="range" id="slFracBLo" min="0" max="100" step="0.5" value="40">
+          <input aria-label="拖动Buffer B上限" type="range" id="slFracB" min="0" max="100" step="0.5" value="70">
+        </div>
+        <div class="slider-row"><span class="lab">目标 pH</span>
+          <input type="range" id="slPH" min="4" max="9" step="0.05" value="7">
+          <input type="number" id="numPH" min="4" max="9" step="0.05" value="7"></div>
+        <div class="slider-row"><span class="lab">样品体积</span>
+          <input type="range" id="slVol" min="0" max="1000" step="1" value="550">
+          <input type="number" id="numVol" min="0.5" max="10000" step="0.1" value="10"><span class="muted">mL（滑块为对数刻度）</span></div>
+        <div class="row"><label>区间容差 ±pH</label><input type="number" id="nTol" value="0.2" step="0.05" min="0" style="width:70px"></div>
+      </div>
+      <div class="card">
+        <h3>中和试剂</h3>
+        <div class="row"><label>来源：</label>
+          <label><input type="radio" name="titrantSrc" value="stock" checked> 现有母液</label>
+          <label><input type="radio" name="titrantSrc" value="custom"> 自定义试剂</label></div>
+        <div class="row" id="nTitrantStockRow"><label>试剂</label><select id="nTitrant"></select></div>
+        <div id="nTitrantCustom" style="display:none">
+          <div class="row"><label>缓冲对</label><select id="nCtSys">
+            <option value="tris">Tris</option>
+            <option value="pb">PB</option>
+            <option value="acetate">NaAc</option>
+            <option value="arg_sys">Arg</option>
+          </select></div>
+          <div class="row"><label>浓度 (M)</label><input type="number" id="nCtConc" value="1" step="0.1" min="0.01" style="width:80px">
+            <label>试剂 pH</label><input type="number" id="nCtPH" value="9.0" step="0.05" min="0" max="14" style="width:70px"></div>
+          <div class="muted">自定义试剂按其缓冲对在给定 pH 下的中和能力计算，不要求存在于母液库。</div>
+        </div>
+        <div class="muted">母液候选来自母液库中带 pKa 的碱类母液（管理页可新增）。</div>
+        <div class="row" style="margin-top:10px"><label>离子强度模型：</label>
+          <label><input type="radio" name="model2" value="edh" checked> 扩展 DH</label>
+          <label><input type="radio" name="model2" value="davies"> Davies</label></div>
+        <div class="row" style="margin-top:14px"><button class="primary" id="btnNeut">计 算</button>
+          <span class="muted">修改任何输入后，点击计算才会刷新下方结果</span></div>
+      </div>
+    </div>
+    <div class="resultzone" id="neutZone">
+      <div class="card"><h3>中和计算结果</h3><div class="muted">填写上方条件后点击「计算」。</div></div>
+    </div>
+  </section>
+
+  <section id="t3" class="tabpage">
+    <div class="pairrow">
+      <div class="card">
+        <h3>母液库 <button class="ghost small noprint" id="btnAddStock" style="float:right">+ 新增母液</button></h3>
+        <div style="overflow-x:auto"><table class="tbl-admin" id="stockTable"></table></div>
+      </div>
+      <div class="card">
+        <h3>缓冲体系库 <button class="ghost small noprint" id="btnAddSys" style="float:right">+ 新增体系</button></h3>
+        <div style="overflow-x:auto"><table class="tbl-admin" id="sysTable"></table></div>
+      </div>
+    </div>
+    <div class="card noprint">
+      <h3>数据管理</h3>
+      <div class="row">
+        <button class="ghost" id="btnExport">导出 JSON</button>
+        <button class="ghost" id="btnImport">导入 JSON</button>
+        <input type="file" id="fileImport" accept=".json" style="display:none">
+        <button class="ghost danger" id="btnReset">恢复出厂默认</button>
+      </div>
+      <div class="muted">所有改动自动保存在本机浏览器；换电脑请用导出/导入同步。</div>
+    </div>
+  </section>
+
+  <section id="t4" class="tabpage">
+    <div class="card">
+      <h3>实测 pH 记录与回归校准</h3>
+      <div class="muted">在「缓冲液配制」页配方结果卡的「实测 pH 记录」小节录入实测 pH。记录按「缓冲体系＋浓度＋添加剂＋目标pH」分组，
+        一条记录只代表它自己那个组合；累积后可按组查看偏差规律并导出做回归校准。
+        记录保存在本机浏览器，并随「导出 JSON」一起备份——换电脑或清理浏览器数据前请先导出。</div>
+      <div id="calibAdmin" style="margin-top:10px"></div>
+    </div>
+  </section>
+</main>
+
+<div class="overlay" id="overlay"><div class="modal" id="modalBox"></div></div>
+
+<script>
+/* ============================================================
+ * BufferCalc Engine — 缓冲液/中和计算引擎（纯函数，无 DOM 依赖）
+ * 参考常数约 25 °C；经验数据测量温度未确认。活度模型：扩展 Debye-Hückel ('edh') / Davies ('davies')
+ * ============================================================ */
+(function (global) {
+  'use strict';
+
+  // 25 °C 参考常数（未实现温度换算）
+  const A_DH = 0.509;      // Debye-Hückel A (kg^1/2 mol^-1/2)
+  const B_DH = 0.328;      // Debye-Hückel B (Å^-1)
+  const ION_SIZE = 4.5;     // 默认离子尺寸参数 å (Å)
+  const KW = 1e-14;
+  const TITRANT_EPS_M = 1e-10; // 仅忽略随定容体积缩放的浮点残差 (mol/L)
+
+  /* ---------- 电导率估算（极限摩尔电导 λ°，25°C 文献值，S·cm²/mol） ---------- */
+  const L_NA = 50.1, L_K = 73.5, L_CL = 76.3, L_H = 349.8, L_OH = 198.6;
+  // 各缓冲体系逐物种 λ°（顺序 = d 值 0..n，全质子化在前；中性物种为 0）
+  const SYS_LAMBDA = {
+    pb:        [0, 33, 57, 69],   // H3PO4 / H2PO4⁻ / HPO4²⁻ / PO4³⁻
+    acetate:   [0, 40.9],         // HAc / Ac⁻
+    citrate:   [0, 30, 53, 72],   // H3CA / H2CA⁻ / HCA²⁻ / CA³⁻
+    tris:      [29, 0],           // TrisH⁺ / Tris
+    histidine: [45, 28, 0, 28],           // HisH⁺ / His
+    glycine:   [38, 0, 37],       // GlyH⁺ / Gly± / Gly⁻
+    arg_sys:   [45, 30, 0, 30],           // ArgH⁺ / Arg
+    ad_arg: [45, 30, 0, 30], ad_arg_hcl: [45, 30, 0, 30], ad_tris: [29, 0],
+    ad_imidazole: [32, 0], ad_his: [28, 0], ad_gly: [38, 0],
+  };
+  function speciesLambda(sysId, k, z) {
+    if (isArg(sysId)) sysId = 'arg_sys';
+    else if (sysId && sysId.startsWith('ct_')) sysId = sysId.slice(3);
+    const arr = SYS_LAMBDA[sysId];
+    if (arr && arr[k] != null) return arr[k];
+    return z === 0 ? 0 : 35 + 20 * (Math.abs(z) - 1); // 未收录离子的通用估计
+  }
+  function isArg(id) { return ['arg_sys','ad_arg','ad_arg_hcl','t_arg','ct_arg_sys'].includes(id); }
+  // 由离子清单 {concM, lambda} 求电导率（mS/cm）：κ = Σ c(M)·λ + H⁺/OH⁻ 水项
+  function conductivityOf(ions, pH, finite = true) {
+    let k = 0;
+    for (const ion of ions) k += ion.concM * (ion.lambda != null ? ion.lambda : speciesLambda(null, null, ion.z));
+    const h = Math.pow(10, -pH);
+    k += h * L_H + (KW / h) * L_OH;
+    if (finite) {
+      const sum = lambda => ions.filter(i => i.lambda === lambda).reduce((s,i) => s+i.concM,0);
+      // Composition-based transport estimate, not a thermodynamic activity correction.
+      const arg = Math.min(ions.filter(i=>i.transport==='arg' && i.z===1 && i.lambda===30).reduce((s,i)=>s+i.concM,0), sum(L_CL));
+      const nacl = Math.min(sum(L_NA), Math.max(0, sum(L_CL)-arg));
+      if (nacl > 1.2 || arg > 1) return null;
+      k -= nacl*(L_NA+L_CL) + arg*(30+L_CL);
+      k += nacl*(L_NA+L_CL)/(1+0.55*Math.sqrt(nacl));
+      // HEPES literature values are TOTALS. With no matched blank available,
+      // use them only as a conservative transport envelope, not isolated Arg data.
+      k += interpolate([[0,0],[.3,18],[.5,28],[.7,36],[.8,38],[.9,41],[1,43]],arg);
+    }
+    return Math.max(0,k); // mol/L · S·cm²/mol = 1e-3 S/cm = mS/cm
+  }
+
+  function interpolate(points, x) {
+    if (x <= points[0][0]) return points[0][1];
+    for (let j=1;j<points.length;j++) if(x<=points[j][0]) {
+      const [a,u]=points[j-1], [b,v]=points[j]; return u+(v-u)*(x-a)/(b-a);
+    }
+    return points[points.length-1][1];
+  }
+
+  // Effective phosphate calibration, not a change to the thermodynamic pKa.
+  const lowArgCache=new Map();
+  function fitLowArgPoints(pb,arg,model) {
+    const key=JSON.stringify([pb.steps,arg.steps,model]);
+    if(lowArgCache.has(key))return lowArgCache.get(key);
+    // Analytical dibasic phosphate in the previously generated pH6.0 recipes.
+    // 5.55 is a provisional fit center for the reported interval [5.5,5.6].
+    const records=[{c:.02,baseM:.002001678455289216,pH:5.84},
+      {c:.2,baseM:.0029329831812836864,pH:5.55}];
+    const points=records.map(record=>{
+      const {c,baseM,pH}=record,cp=.02,initialD=arg.steps[0].zA-1;
+      const Q=cp+baseM+c*initialD,water=KW/10**(-pH)-10**(-pH);
+      let I=c+cp+2*baseM,pk=7.2;
+      for(let j=0;j<100;j++) {
+        const sa=speciation(arg,pH,I,model),target=(Q-c*sa.dbar-water)/cp;
+        let lo=3,hi=10,sp;
+        for(let k=0;k<70;k++) {
+          pk=(lo+hi)/2;
+          sp=speciation({...pb,empiricalPka:{1:pk},pbArgCalibration:undefined},pH,I,model);
+          if(sp.dbar>target)lo=pk;else hi=pk;
+        }
+        const next=.5*(cp+baseM+c+cp*sp.fracs.reduce((s,f,k)=>s+f*sp.charges[k]**2,0)
+          +c*sa.fracs.reduce((s,f,k)=>s+f*sa.charges[k]**2,0)+10**(-pH)+KW/10**(-pH));
+        if(Math.abs(next-I)<1e-11)break;I=(I+next)/2;
+      }
+      return [c,pk];
+    });
+    lowArgCache.set(key,points);return points;
+  }
+  // Effective acetate calibration, not a change to the thermodynamic pKa.
+  const acNaclCache=new Map();
+  function fitAcetateNaclPoints(acSys,model) {
+    const key=JSON.stringify([acSys.steps,model]);
+    if(acNaclCache.has(key))return acNaclCache.get(key);
+    // 实测均使用默认 EDH 页面配方。50 mM 点来自校准前配方；300 mM 点采用
+    // v5 校准后实际配方（NaAc 79.7542%）的新复测 pH 4.7，替代旧的 4.8 先验。
+    // totalQ 是对应配方在 1 L 中的 NaAc 摩尔数；显式冻结组成可避免拟合递归。
+    const records=[
+      {c:.05,pH:4.9,totalQ:.01365215849944258},
+      {c:.3,pH:4.7,totalQ:.015950846206720472},
+    ];
+    const points=records.map(({c,pH,totalQ})=>{
+      const cp=.02,h=10**(-pH),oh=KW/h;
+      const dbar=(totalQ-oh+h)/cp; // 单步体系闭式反解：cp·dbar + oh − h = Q
+      if(!(dbar>0&&dbar<1))return [c,acSys.steps[0].pKa]; // 组成异常时退回理论值
+      return [c,pH-Math.log10(dbar/(1-dbar))];
+    });
+    acNaclCache.set(key,points);return points;
+  }
+  const acArgCache=new Map();
+  function fitAcetateArgPoints(acSys,arg,model) {
+    const key=JSON.stringify([acSys.steps,arg.steps,model]);
+    if(acArgCache.has(key))return acArgCache.get(key);
+    // 20 mM NaAc/HAc＋Arg-HCl。300 mM组来自历史表第123–126行，另加入
+    // 用户按旧计算器精确配方（NaAc 86.96002%）复配后的pH5.30；该直接复测权重为2。
+    // 500 mM仅有历史表第132行的内部比例点，因此单独标记为单点校准。
+    const records=[
+      {c:.3,f:.94,pH:5.60,w:1},{c:.3,f:.96,pH:5.75,w:1},
+      {c:.3,f:.97,pH:5.80,w:1},{c:.3,f:.88,pH:5.20,w:1},
+      {c:.3,f:4.348001/5,pH:5.30,w:2},{c:.5,f:.91,pH:5.36,w:1},
+    ];
+    const fitted=records.map(record=>{
+      const cp=.02,h=10**(-record.pH),water=KW/h-h,initialD=arg.steps[0].zA-1;
+      const totalQ=cp*record.f+record.c*initialD;
+      let I=record.c+cp*record.f,pk=acSys.steps[0].pKa;
+      for(let j=0;j<200;j++) {
+        const sa=speciation(arg,record.pH,I,model);
+        const dbar=(totalQ-record.c*sa.dbar-water)/cp;
+        if(!(dbar>0&&dbar<1)) { pk=acSys.steps[0].pKa;break; }
+        pk=record.pH-Math.log10(dbar/(1-dbar));
+        const sp=speciation({...acSys,empiricalPka:{0:pk},naAcArgCalibration:undefined},record.pH,I,model);
+        const argZ2=sa.fracs.reduce((s,f,k)=>s+f*sa.charges[k]**2,0);
+        const next=.5*(cp*record.f+record.c+cp*sp.dbar+record.c*argZ2+h+KW/h);
+        if(Math.abs(next-I)<1e-12){I=next;break;}I=(I+next)/2;
+      }
+      return {...record,pk};
+    });
+    const points=[.3,.5].map(c=>{
+      const rows=fitted.filter(r=>r.c===c),weight=rows.reduce((s,r)=>s+r.w,0);
+      return [c,rows.reduce((s,r)=>s+r.pk*r.w,0)/weight];
+    });
+    acArgCache.set(key,points);return points;
+  }
+  function calibratedInput(input) {
+    if(input.empirical===false)return input;
+    const bs=input.buffers||[],ads=input.additives||[];
+    // 醋酸盐校准只在单一NaAc/HAc体系、单一添加剂下启用，避免参数泄漏到复合体系。
+    if(bs.length===1 && bs[0].system.id==='acetate' && bs[0].system.steps.length===1 && bs[0].system.steps[0].pKa===4.76){
+      const saltsA=ads.filter(a=>a.kind!=='neutral'),cpA=bs[0].concM,phA=input.targetPH;
+      if(saltsA.length!==1)return input;
+      const adA=saltsA[0];
+      const model=input.model||'edh',cA=adA.concM;
+      if(adA.stock.id==='nacl' && adA.kind==='salt' && cA>0 && cpA>=.02-1e-9 && cpA<=.025+1e-9) {
+        let note='NaAc＋NaCl使用浓度相关局部校准：20 mM NaAc、目标pH5.0；50 mM NaCl校准前配方实测4.9，300 mM NaCl的v5校准配方（NaAc 79.754%）复测4.7。300 mM点以最新复测替代旧先验；新配比尚待复配实测验证。';
+        if(cpA>.020000001)note+=' 实测仅20 mM NaAc，其他NaAc浓度为近似迁移。';
+        if(cA>.3+1e-9 || phA<4.5 || phA>5.5)note+=' 当前条件含未验证外推：NaCl>300 mM固定300 mM处参数，pH实测仅覆盖5.0。';
+        return {...input,buffers:[{...bs[0],system:{...bs[0].system,naAcNaclCalibration:{c:cA,points:fitAcetateNaclPoints(bs[0].system,model)}}}],calibrationNote:note};
+      }
+      if(adA.stock.id==='arg_hcl' && adA.kind==='protSalt' && isArg(adA.system?.id)
+        && adA.system.steps.some(s=>s.pKa===9.04) && cA>0 && cpA>=.02-1e-9 && cpA<=.025+1e-9) {
+        let note='NaAc＋Arg-HCl使用浓度相关局部校准：20 mM NaAc/HAc、300 mM历史内部点及旧计算器配方复测pH5.30，另含500 mM单点；300 mM采用稳健加权中心，新配比尚待复配实测验证。';
+        if(cpA>.020000001)note+=' 实测仅20 mM NaAc，其他NaAc浓度为近似迁移。';
+        if(cA>.5+1e-9 || phA<5.2 || phA>5.8)note+=' 当前条件含未验证外推：Arg-HCl>500 mM固定500 mM处参数，pH实测仅覆盖5.2–5.8。';
+        return {...input,buffers:[{...bs[0],system:{...bs[0].system,naAcArgCalibration:{c:cA,points:fitAcetateArgPoints(bs[0].system,adA.system,model)}}}],calibrationNote:note};
+      }
+      return input;
+    }
+    if(bs.length!==1 || bs[0].system.id!=='pb' || bs[0].system.steps[1].pKa!==7.2)return input;
+    const cp=bs[0].concM,ph=input.targetPH,salts=ads.filter(a=>a.kind!=='neutral');
+    if(salts.length!==1)return input;
+    const ad=salts[0];
+    if(ad.stock.id==='nacl' && Math.abs(ad.concM-.5)<1e-8 && Math.abs(cp-.02)<1e-8 && ph>=6.4 && ph<=7.5) {
+      return {...input,buffers:[{...bs[0],system:{...bs[0].system,empiricalPka:{1:6.383682}}}],
+        calibrationNote:'PB配比使用20 mM PB＋500 mM NaCl历史记录的局部表观pKa校准。'};
+    }
+    if(ad.stock.id!=='arg_hcl' || ad.kind!=='protSalt' || !isArg(ad.system.id) || !ad.system.steps.some(s=>s.pKa===9.04)
+      || cp<.02-1e-9 || cp>.025+1e-9 || !(ad.concM>0))return input;
+    const model=input.model||'edh',c=ad.concM,pb=bs[0].system;
+    const fit=([a,b,f,h])=>{
+      const sp=speciation(ad.system,h,a+b*(1+2*f),model),d0=ad.system.steps[0].zA-1;
+      const free=f-a/b*(sp.dbar-d0);return [a,h-Math.log10(free/(1-free))];
+    };
+    const old=[[.1,.025,.87,7.24],[.15,.025,.87,7.129],[.2,.025,.87,7],[.3,.025,.90,7]].map(fit);
+    const shift20=fit([.3,.02,.90,6.9])[1]-old[3][1];
+    const high=old.map(([a,pk])=>[a,pk+shift20*(.025-cp)/.005*a/.3]);
+    const low=fitLowArgPoints(pb,ad.system,model).map(([a,pk])=>[a,pk-shift20*(cp-.02)/.005*a/.3]);
+    // Both branches have the same dilute limit. Smooth pH blending avoids the
+    // previous discontinuities at pH6.4 and 100mM; retain high-pH training values.
+    const cal={c,low:low.concat([high[3]]),high:[low[0],...high]};
+    let note='PB＋Arg-HCl使用浓度相关局部校准：新增pH6.0配方实测5.84及5.5–5.6（后者暂以5.55作拟合中心），原配方按默认EDH重建；新配比尚待复配实测验证。';
+    if(cp>.020000001)note+=' 低pH数据仅有20 mM PB，其他PB浓度为近似迁移。';
+    if(c<.02 || c>.3 || ph<5.5 || ph>7.5)note+=' 当前条件含未验证外推；高浓度固定300 mM边界条件参数，极端pH平滑回归理论模型。';
+    return {...input,buffers:[{...bs[0],system:{...pb,pbArgCalibration:cal}}],calibrationNote:note};
+  }
+  function phosphateArgPka(system,pH,I,model) {
+    const cal=system.pbArgCalibration,base=apparentPka(system.steps[1],I,model);
+    const smooth=x=>{x=Math.max(0,Math.min(1,x));return x*x*(3-2*x);};
+    const lo=interpolate([[0,base],...cal.low],cal.c),hi=interpolate([[0,base],...cal.high],cal.c);
+    const blend=smooth((pH-6)/.4),local=lo+(hi-lo)*blend;
+    const weight=smooth(pH-4.5)*(1-smooth(pH-7.5));
+    return base+weight*(local-base);
+  }
+  function acetateNaclPka(system,pH,I,model) {
+    const cal=system.naAcNaclCalibration,base=apparentPka(system.steps[0],I,model);
+    return interpolate([[0,base],...cal.points],cal.c); // c→0 平滑回到理论表观 pKa
+  }
+  function acetateArgPka(system,pH,I,model) {
+    const cal=system.naAcArgCalibration,base=apparentPka(system.steps[0],I,model);
+    // 保持同一组成下的pH→解离度严格单调；实测pH范围外只警告，不在pH轴上切换参数。
+    return interpolate([[0,base],...cal.points],cal.c);
+  }
+
+  /* ---------- 活度 ---------- */
+  function logGamma(z, I, model) {
+    if (z === 0 || I <= 0) return 0;
+    const s = Math.sqrt(I);
+    if (model === 'davies') {
+      return -A_DH * z * z * (s / (1 + s) - 0.3 * I);
+    }
+    return -A_DH * z * z * s / (1 + B_DH * ION_SIZE * s); // edh
+  }
+  function gamma(z, I, model) { return Math.pow(10, logGamma(z, I, model)); }
+
+  // 表观 pKa：pKa_app = pKa + logγ(zB) − logγ(zA)
+  function apparentPka(step, I, model) {
+    return step.pKa + logGamma(step.zB, I, model) - logGamma(step.zA, I, model);
+  }
+
+  /* ---------- 体系物种分布 ----------
+   * system.steps: [{pKa, zA, zB}] 按解离顺序排列
+   * 物种 k = 0..n，k 为已解离质子数（d 值）
+   * 返回 {fracs:[f0..fn], dbar, charges:[z0..zn]}
+   */
+  function speciation(system, pH, I, model) {
+    const steps = system.steps;
+    const n = steps.length;
+    const w = [1];
+    for (let k = 0; k < n; k++) {
+      const pk = k===0 && system.naAcArgCalibration ? acetateArgPka(system,pH,I,model)
+        : k===0 && system.naAcNaclCalibration ? acetateNaclPka(system,pH,I,model)
+        : k===1 && system.pbArgCalibration ? phosphateArgPka(system,pH,I,model)
+        : (system.empiricalPka?.[k] ?? apparentPka(steps[k],I,model));
+      const r = Math.pow(10,pH-pk);
+      w.push(w[k] * r);
+    }
+    let sum = 0; for (const v of w) sum += v;
+    const fracs = w.map(v => v / sum);
+    let dbar = 0;
+    for (let k = 0; k <= n; k++) dbar += k * fracs[k];
+    const charges = [steps[0].zA];
+    for (let k = 0; k < n; k++) charges.push(steps[k].zB);
+    return { fracs, dbar, charges };
+  }
+
+  /* ---------- 由一组组分求混合 pH（质子守恒，二分法） ----------
+   * components: [{system, conc(M), vol(L), fromPH}]
+   */
+  function solveMixPH(components, I, model, solutions) {
+    // 每份实际溶液仅计一次水项；旧调用默认每条组分代表独立溶液。
+    const liquids = solutions || components;
+    const oh = pH => KW / Math.pow(10, -pH);
+    const h = pH => Math.pow(10, -pH);
+    let volTot = 0;
+    for (const c of liquids) volTot += c.vol;
+    function Q(pH) { // 需要从外界加入的强碱 mol（>0 表示偏酸）
+      let q = 0;
+      for (const c of components) {
+        const s = speciation(c.system, pH, I, model);
+        const s0 = speciation(c.system, c.fromPH, c.sourceI ?? I, model);
+        q += c.conc * c.vol * (s.dbar - s0.dbar);
+      }
+      q += volTot * (oh(pH) - h(pH));
+      for (const c of liquids) q -= c.vol * (oh(c.fromPH) - h(c.fromPH));
+      return q;
+    }
+    let lo = 0, hi = 14;
+    for (let i = 0; i < 200; i++) {
+      const mid = (lo + hi) / 2;
+      if (Q(mid) > 0) hi = mid; else lo = mid;
+    }
+    return (lo + hi) / 2;
+  }
+
+  /* ---------- 配方计算（标签页①核心） ----------
+   * input: {
+   *   buffers: [{system, concM}],          // 已勾选缓冲体系及浓度(M)
+   *   targetPH, targetVolL,
+   *   additives: [
+   *     {kind:'salt',    concM, stock, zCat, zAn}        // NaCl/GdnHCl 类
+   *     {kind:'neutral', stock, volL}                    // 蔗糖类，只占体积
+   *     {kind:'protSalt',concM, stock, system}           // Arg-HCl 类：加入时全质子化
+   *     {kind:'protBase',concM, stock, system}           // Arg/咪唑游离碱类：加入时全去质子化
+   *     {kind:'premix',  stock, volL, system, concM, dbarStock, saltIons:[{z,concM}]}
+   *   ],
+   *   model, titrantConcM: {NaOH, HCl}
+   * }
+   * 质子负荷（添加剂吸/放质子、预混液 pH 差）优先摊入有酸碱配比自由的缓冲体系，
+   * 摊不下的部分才折算为虚拟 NaOH/HCl。
+   */
+  function calcRecipe(input) {
+    input = calibratedInput(input);
+    const model = input.model || 'edh';
+    const pH = input.targetPH;
+    const V = input.targetVolL;
+    const tConc = input.titrantConcM || { NaOH: 1, HCl: 1 };
+
+    let I = 0, result = null, converged=false;
+    for (let iter = 0; iter < 50; iter++) {
+      result = recipeAtI(input, I, model, pH, V, tConc);
+      const Inew = result.ionicStrength;
+      if (Math.abs(Inew - I) < 1e-6) { I = Inew; converged=true; break; }
+      I = Inew;
+    }
+    result = recipeAtI(input,I,model,pH,V,tConc);
+    if(!converged) result.warnings.push('离子强度迭代尚未收敛，配方仅供参考。');
+    result.ionicStrength = I;
+    // 反推 pH 校验所需组分（含质子化盐/游离碱/预混液的缓冲组分）
+    result._comps = input.buffers.map(b => ({ system: b.system, CV: b.concM * V }));
+    for (const ad of (input.additives || [])) {
+      if (ad.kind === 'protSalt' || ad.kind === 'protBase') result._comps.push({ system: ad.system, CV: ad.concM * V });
+      if (ad.kind === 'premix') result._comps.push({ system: ad.system, CV: ad.concM * ad.volL });
+    }
+    result.checkPH = backCheckPH(result, I, model, V);
+    result.chargeResidual=result.ions.reduce((s,a)=>s+a.z*a.concM,0)+Math.pow(10,-pH)-KW/Math.pow(10,-pH);
+    if(Math.abs(result.chargeResidual)>1e-6) result.warnings.push('配方离子清单不满足电中性：请核对自定义母液的Na/Cl计数、解离步数和预混组成；模型内pH复核不能证明此配方正确。');
+    if (result.checkPH == null || !Number.isFinite(result.checkPH) || Math.abs(result.checkPH - pH) > 0.02) {
+      result.warnings.push(`配方 pH 复核未达到目标 ${pH}，请勿直接使用该配方；请检查输入或调整配方。`);
+    }
+    // 可达性：配制页用虚拟强酸/强碱调节，故"不可达"指终态 pH 未命中目标。
+    // 报出模型能给出的最近 pH（即复核值）与差距，供用户直接判断改怎么调。
+    {
+      const achieved = result.checkPH;
+      const deviation = (achieved == null || !Number.isFinite(achieved)) ? null : achieved - pH;
+      result.reachability = {
+        target: pH,
+        achieved: (achieved == null || !Number.isFinite(achieved)) ? null : achieved,
+        deviation,
+        feasible: deviation != null && Math.abs(deviation) <= 0.02,
+        reason: deviation == null ? 'noCheckPH' : (Math.abs(deviation) > 0.02 ? 'checkMismatch' : null),
+      };
+      if (result.reachability.reason === 'checkMismatch') {
+        result.warnings.push(`当前条件可达到的 pH 为 ${achieved.toFixed(2)}（目标 ${pH}，相差 ${deviation >= 0 ? '+' : ''}${deviation.toFixed(2)} pH）。请调整缓冲剂浓度/体积，或勾选「允许使用 NaOH/HCl」后重算。`);
+      } else if (result.reachability.reason === 'noCheckPH') {
+        result.warnings.push('无法反算该配方的终态 pH，不能判断目标 pH 是否可达；请检查缓冲体系与母液定义。');
+      }
+    }
+    // 缓冲容量 β (mol/L/pH)，只计缓冲体系
+    let beta = 0;
+    const dp = 0.001;
+    for (const b of input.buffers) {
+      const s1 = speciation(b.system, pH + dp, I, model);
+      const s0 = speciation(b.system, pH - dp, I, model);
+      beta += b.concM * (s1.dbar - s0.dbar) / (2 * dp);
+    }
+    result.beta = beta;
+    // 估算电导率（mS/cm，极限摩尔电导加和，含 H⁺/OH⁻ 水项）
+    result.conductivityIdeal = conductivityOf(result.ions, pH, false);
+    result.conductivity = conductivityOf(result.ions, pH);
+    const ads=input.additives||[], active=ads.filter(a=>a.kind!=='neutral');
+    const na=active.find(a=>a.stock.id==='nacl');
+    if(na && na.concM>1) result.conductivity=null;
+    if(active.some(a=>isArg(a.system?.id) && a.concM>1)) result.conductivity=null;
+    // Fit the salt-dependent increment in the SAME background, retaining its baseline.
+    // Reference recalculations are pure and do not apply this normalization recursively.
+    const pbs=active.find(a=>a.stock.id==='pbs10x');
+    const pbBackground=active.length===1 && na && input.buffers.length===1 && input.buffers[0].system.id==='pb' && Math.abs(input.buffers[0].concM-.02)<1e-8 && Math.abs(pH-7)<.01;
+    const pbsBackground=active.length===2 && na && pbs && Math.abs(pbs.volL/V-.1)<1e-8 && !input.buffers.length && Math.abs(pH-7.4)<.01;
+    if(!input._conductivityReference && na && na.concM<=1 && (pbBackground || pbsBackground)) {
+      const refC=pbBackground ? .5 : 1, target=pbBackground ? 50 : 100;
+      const baseline=calcRecipe({...input,empirical:false,_conductivityReference:true,
+        buffers:input.buffers.map(b=>({...b,system:{...b.system,empiricalPka:undefined}})),
+        additives:ads.map(a=>a===na ? {...a,concM:0} : a)}).conductivity;
+      const backgroundSalt=pbsBackground ? .137 : 0;
+      const transport=c=>c/(1+.55*Math.sqrt(c));
+      const increment=c=>transport(c+backgroundSalt)-transport(backgroundSalt);
+      if(result.conductivity!=null) result.conductivity=baseline+(target-baseline)*increment(na.concM)/increment(refC);
+      result.warnings.push(pbBackground ? '电导率曲线按20 mM PB、pH约7、500 mM NaCl总值50 mS/cm归一化；其余浓度为工程插值/外推，限NaCl≤1 M。' : '电导率按额外1 M NaCl＋1×PBS、pH约7.4总值100 mS/cm归一化；包含PBS，其他浓度为近似。');
+    }
+    if(input.calibrationNote) result.warnings.push(input.calibrationNote);
+    result.warnings.push('电导率为有限浓度工程估计，测量温度与混合盐效应未校准；超范围不报数值。');
+    if(active.some(a=>isArg(a.system?.id))) result.warnings.push('Arg-HCl：300 mM暂按约18 mS/cm的盐贡献处理；HEPES文献总值仅作贡献上沿近似，含背景偏差，不是PB总电导率实测曲线。');
+    result.warnings.push('pH复核只检查模型内部守恒，不是实测准确性验证；母液按标签化学组成计量，若预先调过酸碱需记录实际组成。');
+    return result;
+  }
+
+  function recipeAtI(input, I, model, pH, V, tConc) {
+    const lines = [];       // {name, moles, volL, note, stockId, kind}
+    const warnings = [];
+    const ions = [];        // {z, concM}
+    let totalQ = 0;         // 母液提供的去质子化数总和 (mol·d)
+    let netLoad = V * (KW / Math.pow(10, -pH) - Math.pow(10, -pH));        // 净质子负荷（>0 = 需要额外碱式组分）
+
+    // 母液游离质子修正：q = 每 mol 母液带入的游离 (H+ − OH−)
+    // dStock is the analytical proton inventory of a chemical stock.
+    // Dissociation redistributes bound/free protons; refpH must not be added twice.
+    const qm = () => 0;
+
+    /* ---- 1) 添加剂（先算，收集质子负荷） ---- */
+    for (const ad of (input.additives || [])) {
+      if (ad.kind === 'neutral') {
+        lines.push({ name: ad.stock.name, stockId: ad.stock.id, moles: 0, volL: ad.volL || 0, kind: 'additive', note: '非离子，不占离子强度' });
+        continue;
+      }
+      if (ad.kind === 'salt') {
+        const moles = ad.concM * V;
+        lines.push({ name: ad.stock.name, stockId: ad.stock.id, moles, volL: moles / ad.stock.concM, kind: 'additive', note: '' });
+        // 阳离子：NaCl 类为 Na⁺；GdnHCl 类（na=0,cl=1）为有机阳离子本身（λ≈54）
+        ions.push({ z: ad.zCat || 1, concM: ad.concM, lambda: ad.stock.na ? L_NA : 54 });
+        ions.push({ z: ad.zAn || -1, concM: ad.concM, lambda: ad.stock.cl ? L_CL : 40 });
+        continue;
+      }
+      if (ad.kind === 'premix') {
+        // 预混母液（如 10× PBS）：含已知组成的缓冲组分 + 盐
+        const volL = ad.volL;
+        const moles = ad.concM * volL;
+        const cf = moles / V;
+        lines.push({ name: ad.stock.name, stockId: ad.stock.id, moles, volL, kind: 'premix', note: `预混，缓冲组分终浓度 ${(cf * 1000).toFixed(1)} mM` });
+        const sp = speciation(ad.system, pH, I, model);
+        for (let k = 0; k < sp.fracs.length; k++) {
+          if (sp.charges[k] !== 0) ions.push({ z: sp.charges[k], concM: cf * sp.fracs[k], transport: isArg(ad.system.id) ? 'arg' : null, lambda: speciesLambda(ad.system.id, k, sp.charges[k]) });
+        }
+        for (const ion of (ad.saltIons || [])) ions.push({ z: ion.z, concM: ion.concM * volL / V, lambda: ion.lambda != null ? ion.lambda : (ion.z > 0 ? L_NA : L_CL) });
+        netLoad += moles * (sp.dbar - ad.dbarStock);
+        totalQ += moles * ad.dbarStock;
+        continue;
+      }
+      if (ad.kind === 'protSalt') {
+        // Arg-HCl 类：按带一个Cl⁻的分析质子库存加入；目标pH下可向任一方向发生微量质子交换。
+        const moles = ad.concM * V;
+        lines.push({ name: ad.stock.name, stockId: ad.stock.id, moles, volL: moles / ad.stock.concM, kind: 'additive', note: '' });
+        const sp = speciation(ad.system, pH, I, model);
+        for (let k = 0; k < sp.fracs.length; k++) {
+          if (sp.charges[k] !== 0) ions.push({ z: sp.charges[k], concM: ad.concM * sp.fracs[k], transport: isArg(ad.system.id) ? 'arg' : null, lambda: speciesLambda(ad.system.id, k, sp.charges[k]) });
+        }
+        ions.push({ z: -1, concM: ad.concM, lambda: L_CL }); // Cl-
+        const initialD = ad.system.steps[0].zA - 1;
+        totalQ += moles * initialD;
+        const released = moles * (sp.dbar - initialD);
+        netLoad += released;
+        if (released > 1e-9) warnings.push(`「${ad.stock.name}」在 pH ${pH.toFixed(1)} 下部分去质子化，释放 ${(released * 1000).toFixed(2)} mmol 质子，已由缓冲体系配比吸收（不足部分折算 NaOH）`);
+        else if (released < -1e-9) warnings.push(`「${ad.stock.name}」在 pH ${pH.toFixed(1)} 下进一步质子化，吸收 ${(-released * 1000).toFixed(2)} mmol 质子，已由缓冲体系配比吸收（不足部分折算 HCl）`);
+        continue;
+      }
+      if (ad.kind === 'protBase') {
+        // Arg/咪唑游离碱类：加入时全去质子化（d=1），目标 pH 下部分质子化消耗质子
+        const moles = ad.concM * V;
+        lines.push({ name: ad.stock.name, stockId: ad.stock.id, moles, volL: moles / ad.stock.concM, kind: 'additive', note: '' });
+        const sp = speciation(ad.system, pH, I, model);
+        for (let k = 0; k < sp.fracs.length; k++) {
+          if (sp.charges[k] !== 0) ions.push({ z: sp.charges[k], concM: ad.concM * sp.fracs[k], transport: isArg(ad.system.id) ? 'arg' : null, lambda: speciesLambda(ad.system.id, k, sp.charges[k]) });
+        }
+        const initialD = ad.system.steps[0].zA;
+        const consumed = moles * (initialD - sp.dbar);
+        netLoad -= consumed;
+        if (Math.abs(consumed) > 1e-9) {
+          warnings.push(`「${ad.stock.name}」在 pH ${pH.toFixed(1)} 下部分质子化，消耗 ${(consumed * 1000).toFixed(2)} mmol 质子，已由缓冲体系配比吸收（不足部分折算 HCl）`);
+        }
+        totalQ += moles * initialD;
+        continue;
+      }
+    }
+
+    /* ---- 2) 缓冲体系：候选方案全局优选 ----
+     * 复合配方（多缓冲对）在同一目标 pH 下存在多种母液组合（体系间质子负荷可相互转移），
+     * 这里枚举各体系的候选用量方案，按"尽量避免 <1 mL 吸取体积 → 尽量避免虚拟滴定剂 → 最小体积最大化"优选。
+     */
+    const MIN_VOL_L = 1e-3; // 1 mL 最小吸取体积
+    const sysInfos = [];
+    for (const b of input.buffers) {
+      const sp = speciation(b.system, pH, I, model);
+      const CV = b.concM * V;
+      for (let k = 0; k < sp.fracs.length; k++) {
+        if (sp.charges[k] !== 0) ions.push({ z: sp.charges[k], concM: b.concM * sp.fracs[k], transport: isArg(b.system.id) ? 'arg' : null, lambda: speciesLambda(b.system.id, k, sp.charges[k]) });
+      }
+      const stocks = (b.system.stocks || []).slice().sort((a, c) => a.dStock - c.dStock);
+      if (!stocks.length) { warnings.push(`体系「${b.system.name}」没有可用母液`); continue; }
+      if (b.system.id==='histidine' && b.system.steps.length===1) warnings.push('自定义His仍为单步模型；极端pH缺少羧基/氨基解离，请采用新版默认三步体系。');
+      const inRange = b.system.range && pH >= b.system.range[0] && pH <= b.system.range[1];
+      const inRange2 = b.system.range2 && pH >= b.system.range2[0] && pH <= b.system.range2[1];
+      if (b.system.range && !inRange && !inRange2) {
+        warnings.push(`「${b.system.name}」目标 pH ${pH.toFixed(2)} 超出建议范围 ${b.system.range[0]}–${b.system.range[1]}${b.system.range2 ? ' / ' + b.system.range2[0] + '–' + b.system.range2[1] : ''}，缓冲能力弱`);
+      }
+      sysInfos.push({ b, CV, dbar: sp.dbar, stocks });
+    }
+
+    // 单体系候选方案；supplied = Σ moles·(d−q)，与 needed = CV·dbar 之差 = 向外转移的质子负荷
+    function candidatesOf(info) {
+      const { CV, dbar, stocks } = info;
+      const solo = s => ({ acid: { stock: s, moles: CV }, base: null, supplied: CV * (s.dStock - qm(s)) });
+      if (dbar <= stocks[0].dStock) return [solo(stocks[0])];
+      if (dbar >= stocks[stocks.length - 1].dStock) return [solo(stocks[stocks.length - 1])];
+      const cands = [];
+      // 相邻夹逼配对（与旧版贪心一致，作为自然配比）
+      let adjI = -1;
+      for (let i = 0; i < stocks.length - 1; i++) {
+        if (stocks[i].dStock <= dbar && stocks[i + 1].dStock >= dbar) { adjI = i; break; }
+      }
+      for (let i = 0; i < stocks.length; i++) {
+        for (let j = i + 1; j < stocks.length; j++) {
+          const s0 = stocks[i], s1 = stocks[j];
+          if (!(s0.dStock <= dbar && s1.dStock >= dbar)) continue;
+          const d0 = s0.dStock - qm(s0), d1 = s1.dStock - qm(s1);
+          const denom = d1 - d0;
+          if (denom < 1e-9) continue;
+          const baseMol = CV * (dbar - d0) / denom;
+          // 相邻配对为自然配比（无负荷转移时的默认解）
+          cands.push({ acid: { stock: s0, moles: CV - baseMol }, base: { stock: s1, moles: baseMol }, supplied: CV * dbar, natural: j === adjI + 1 && i === adjI, d0, d1 });
+          // 边界变体：让某一侧恰好为 1 mL 当量（换取另一侧省掉或达标）
+          const minA = MIN_VOL_L * s0.concM, minB = MIN_VOL_L * s1.concM;
+          if (CV - minA > 1e-12) cands.push({ acid: { stock: s0, moles: minA }, base: { stock: s1, moles: CV - minA }, supplied: minA * d0 + (CV - minA) * d1 });
+          if (CV - minB > 1e-12) cands.push({ acid: { stock: s0, moles: CV - minB }, base: { stock: s1, moles: minB }, supplied: (CV - minB) * d0 + minB * d1 });
+        }
+      }
+      // 单母液方案（省掉另一种母液，质子差额由其他体系/滴定补偿）
+      for (const s of stocks) cands.push(solo(s));
+      return cands;
+    }
+
+    const candLists = sysInfos.map(candidatesOf);
+    // 连续调节者：拥有自然配对且 CV 最大的体系，沿其配对微调 baseMol 吸收残差
+    let contIdx = -1, contRoom = -1;
+    sysInfos.forEach((info, i) => {
+      if (candLists[i].some(c => c.natural) && info.CV > contRoom) { contRoom = info.CV; contIdx = i; }
+    });
+    const discreteIdxs = sysInfos.map((_, i) => i).filter(i => i !== contIdx);
+    let combos = [[]];
+    let overflow = false;
+    for (const i of discreteIdxs) {
+      const next = [];
+      for (const combo of combos) {
+        for (const cand of candLists[i]) {
+          next.push(combo.concat([[i, cand]]));
+          if (next.length > 300000) { overflow = true; break; }
+        }
+        if (overflow) break;
+      }
+      if (overflow) { // 组合爆炸时退化为全自然配比
+        combos = [sysInfos.map((_, ii) => [ii, (candLists[ii].find(c => c.natural) || candLists[ii][0])])];
+        break;
+      }
+      combos = next;
+    }
+
+    function scoreOf(assignEntries, naoh, hcl) {
+      let tiny = 0, minVol = Infinity, nonNat = 0;
+      for (const [, cand] of assignEntries) {
+        if (!cand.natural) nonNat++;
+        for (const u of [cand.acid, cand.base]) {
+          if (!u || u.moles <= 1e-12) continue;
+          const vol = u.moles / u.stock.concM;
+          if (vol < MIN_VOL_L - 1e-9) tiny++;
+          else if (vol < minVol) minVol = vol;
+        }
+      }
+      const titrantBad = (naoh + hcl) > (TITRANT_EPS_M * V) ? 1 : 0;
+      return [tiny, titrantBad, nonNat, -minVol];
+    }
+    function cmpScore(a, b) {
+      for (let k = 0; k < 4; k++) { if (a[k] !== b[k]) return a[k] < b[k] ? -1 : 1; }
+      return 0;
+    }
+
+    let best = null;
+    for (const combo of combos) {
+      const assign = new Map(combo);
+      let transfer = 0;
+      for (const [i, cand] of combo) transfer += cand.supplied - sysInfos[i].CV * sysInfos[i].dbar;
+      let residual = netLoad - transfer;
+      if (contIdx >= 0) {
+        const info = sysInfos[contIdx];
+        const nat = candLists[contIdx].find(c => c.natural);
+        let baseMol = nat.base.moles + residual / (nat.d1 - nat.d0);
+        baseMol = Math.max(0, Math.min(info.CV, baseMol));
+        const contCand = { acid: { stock: nat.acid.stock, moles: info.CV - baseMol }, base: { stock: nat.base.stock, moles: baseMol }, supplied: (info.CV - baseMol) * nat.d0 + baseMol * nat.d1, natural: true };
+        residual -= (contCand.supplied - info.CV * info.dbar);
+        assign.set(contIdx, contCand);
+      }
+      const naoh = residual > 0 ? residual : 0, hcl = residual < 0 ? -residual : 0;
+      const score = scoreOf(Array.from(assign), naoh, hcl);
+      if (!best || cmpScore(score, best.score) < 0) best = { assign, naoh, hcl, score };
+    }
+
+    // 按体系顺序生成母液行与离子台账
+    sysInfos.forEach((info, i) => {
+      const cand = best.assign.get(i);
+      if (!cand) return;
+      // 每个缓冲对先展示较高解离当量的碱式母液，再展示酸式母液。
+      for (const u of [cand.base, cand.acid]) {
+        if (!u || u.moles <= 1e-12) continue;
+        const volL = u.moles / u.stock.concM;
+        lines.push({ name: u.stock.name, stockId: u.stock.id, moles: u.moles, volL, kind: 'stock', note: `d=${u.stock.dStock}` });
+        totalQ += u.moles * u.stock.dStock;
+        if (u.stock.na) ions.push({ z: 1, concM: u.stock.na * u.moles / V, lambda: L_NA });
+        if (u.stock.cl) ions.push({ z: -1, concM: u.stock.cl * u.moles / V, lambda: L_CL });
+      }
+    });
+
+    /* ---- 3) 摊不完的质子负荷 → 虚拟滴定剂 ---- */
+    let naohMol = 0, hclMol = 0;
+    if (best) { naohMol = best.naoh; hclMol = best.hcl; }
+    else if (netLoad > 0) naohMol = netLoad; else hclMol = -netLoad;
+    if (naohMol > (TITRANT_EPS_M * V)) {
+      lines.push({ name: `NaOH（虚拟，${tConc.NaOH} M）`, moles: naohMol, volL: naohMol / tConc.NaOH, kind: 'titrant', note: '缓冲体系配比无法吸收的残余质子负荷' });
+      ions.push({ z: 1, concM: naohMol / V, lambda: L_NA });
+      totalQ += naohMol;
+    }
+    if (hclMol > (TITRANT_EPS_M * V)) {
+      lines.push({ name: `HCl（虚拟，${tConc.HCl} M）`, moles: hclMol, volL: hclMol / tConc.HCl, kind: 'titrant', note: '缓冲体系配比无法吸收的残余质子负荷' });
+      ions.push({ z: -1, concM: hclMol / V, lambda: L_CL });
+      totalQ -= hclMol;
+    }
+
+    // 离子强度
+    let Isum = 0;
+    for (const ion of ions) Isum += ion.concM * ion.z * ion.z;
+    const ionicStrength = 0.5 * (Isum + Math.pow(10,-pH) + KW/Math.pow(10,-pH));
+
+    // 补水
+    let used = 0;
+    for (const l of lines) used += l.volL;
+    const waterL = V - used;
+
+    for (const l of lines) {
+      if (l.kind === 'stock' && l.volL * 1e6 < 10) {
+        warnings.push(`「${l.name}」吸取体积 ${(l.volL * 1e6).toFixed(1)} µL 过小，建议预稀释母液`);
+      } else if (l.kind === 'stock' && l.volL < MIN_VOL_L) {
+        warnings.push(`「${l.name}」吸取体积 ${(l.volL * 1000).toFixed(2)} mL 小于 1 mL（复合配方已优化仍无法避免），建议预稀释母液后吸取`);
+      }
+    }
+    if (waterL < 0) warnings.push('母液总体积超过目标体积，无法配制！请降低浓度或换更浓母液');
+    if (ionicStrength > 0.1) warnings.push(`离子强度 ${(ionicStrength * 1000).toFixed(0)} mM > 100 mM，活度模型误差增大，仅供参考`);
+
+    return { lines, warnings, ions, ionicStrength, waterL, totalQ, naohMol, hclMol };
+  }
+
+  // 用配方反推 pH：Σ CV·dbar(pH) = totalQ + 水项
+  function backCheckPH(result, I, model, V) {
+    const comps = result._comps || [];
+    if (!comps.length) return null;
+    const Q = result.totalQ;
+    function f(pH) {
+      let lhs = 0;
+      for (const c of comps) lhs += c.CV * speciation(c.system, pH, I, model).dbar;
+      lhs += V * ((KW / Math.pow(10, -pH)) - Math.pow(10, -pH));
+      return lhs - Q;
+    }
+    let lo = 0, hi = 14;
+    if (f(lo) > 0 || f(hi) < 0) return null;
+    for (let i = 0; i < 200; i++) {
+      const mid = (lo + hi) / 2;
+      if (f(mid) > 0) hi = mid; else lo = mid;
+    }
+    return (lo + hi) / 2;
+  }
+
+  function sourceIonicStrength(buf, model) {
+    let I=buf.saltI||0;
+    for(let j=0;j<100;j++) {
+      let sum=2*(buf.saltI||0), net=Math.pow(10,-buf.pH)-KW/Math.pow(10,-buf.pH);
+      for(const c of buf.components) {
+        const sp=speciation(c.system,buf.pH,I,model);
+        sp.fracs.forEach((f,k)=>{sum+=c.concM*f*sp.charges[k]**2;net+=c.concM*f*sp.charges[k];});
+      }
+      const next=.5*(sum+Math.abs(net)+Math.pow(10,-buf.pH)+KW/Math.pow(10,-buf.pH));
+      if(Math.abs(next-I)<1e-10) return next;
+      I=(I+next)/2;
+    }
+    return I;
+  }
+
+  /* ---------- 洗脱中和计算（标签页②核心） ----------
+   * input: {
+   *   bufA: {components:[{system, concM}], pH, saltI},   // saltI = 1:1 盐浓度之和(M)
+   *   bufB: {components:[{system, concM}], pH, saltI},
+   *   fracB (0-1), targetPH, sampleVolL,
+   *   titrant: {system, concM, reagentPH, name}
+   *     （兼容旧式 {system, stock(concM, refpH), name}；system 可为多 pKa 缓冲对）
+   *   model, tolerancePH
+   * }
+   */
+  function calcNeutralization(input) {
+    const model = input.model || 'edh';
+    const x = input.fracB;
+    const V = input.sampleVolL;
+    const solutions = [
+      { vol: V * (1 - x), fromPH: input.bufA.pH },
+      { vol: V * x, fromPH: input.bufB.pH },
+    ].filter(s => s.vol > 0);
+    const sourceIA=sourceIonicStrength(input.bufA,model), sourceIB=sourceIonicStrength(input.bufB,model);
+    const comps = [];
+    for (const c of input.bufA.components) comps.push({ system: c.system, conc: c.concM, vol: V * (1 - x), fromPH: input.bufA.pH, sourceI: sourceIA });
+    for (const c of input.bufB.components) comps.push({ system: c.system, conc: c.concM, vol: V * x, fromPH: input.bufB.pH, sourceI: sourceIB });
+    const live = comps.filter(c => c.vol > 0 && c.conc > 0);
+    const saltI = (input.bufA.saltI || 0) * (1 - x) + (input.bufB.saltI || 0) * x;
+
+    const water=p=>KW/Math.pow(10,-p)-Math.pow(10,-p);
+    // Each physical stock contributes ONE fixed counterion inventory.
+    function counterOf(buf, sourceI, vol) {
+      let net=-water(buf.pH);
+      for(const c of buf.components) {
+        const sp=speciation(c.system,buf.pH,sourceI,model);
+        net+=c.concM*sp.fracs.reduce((s,f,k)=>s+f*sp.charges[k],0);
+      }
+      return {z:net>0 ? -1 : 1,moles:Math.abs(net)*vol,lambda:net>0 ? L_CL : L_NA};
+    }
+    const fixed=[counterOf(input.bufA,sourceIA,V*(1-x)),counterOf(input.bufB,sourceIB,V*x),
+      {z:1,moles:saltI*V,lambda:L_NA},{z:-1,moles:saltI*V,lambda:L_CL}];
+    function sampleIons(pHstate, ionicI, vol) {
+      const arr=fixed.map(a=>({...a,concM:a.moles/vol}));
+      for(const c of live) {
+        const sp=speciation(c.system,pHstate,ionicI,model);
+        sp.fracs.forEach((f,k)=>{if(sp.charges[k]) arr.push({z:sp.charges[k],concM:c.conc*c.vol*f/vol,
+          transport:isArg(c.system.id)?'arg':null,lambda:speciesLambda(c.system.id,k,sp.charges[k])});});
+      }
+      return arr;
+    }
+    const ionStrength=(ions,pH)=>.5*(ions.reduce((s,a)=>s+a.concM*a.z*a.z,0)+Math.pow(10,-pH)+KW/Math.pow(10,-pH));
+    let I=Math.max(.001,saltI),mixPH=null;
+    for(let j=0;j<100;j++) {
+      mixPH=solveMixPH(live,I,model,solutions);
+      const next=ionStrength(sampleIons(mixPH,I,V),mixPH);
+      if(Math.abs(next-I)<1e-10) {I=next;break;}
+      I=(I+next)/2;
+    }
+    mixPH=solveMixPH(live,I,model,solutions);
+
+    function needBaseMol(pHt) { // 从 mixPH 滴定到 pHt 所需强碱 mol
+      let n = 0;
+      for (const c of live) {
+        const s1 = speciation(c.system, pHt, I, model);
+        const s0 = speciation(c.system, mixPH, I, model);
+        n += c.conc * c.vol * (s1.dbar - s0.dbar);
+      }
+      const oh = p => KW / Math.pow(10, -p), hh = p => Math.pow(10, -p);
+      n += V * ((oh(pHt) - hh(pHt)) - (oh(mixPH) - hh(mixPH)));
+      return n;
+    }
+
+    const t = input.titrant;
+    // 兼容两种形态：新式 {system, concM, reagentPH}；旧式 {system, stock{concM, refpH}}
+    const tConcM = t.concM != null ? t.concM : (t.stock ? t.stock.concM : 0);
+    const tRefPH = t.reagentPH != null ? t.reagentPH : (t.stock ? t.stock.refpH : null);
+    const titrantI=tRefPH==null ? I : sourceIonicStrength({components:[{system:t.system,concM:tConcM}],pH:tRefPH,saltI:0},model);
+    function effectiveFrac(pHt) {
+      // 每 mol 试剂净吸收质子 = 试剂自身 pH 下平均解离度 − 目标 pH 下平均解离度
+      // （对单 pKa 碱式试剂，等价于旧式"目标 pH 质子化比例 − 母液 pH 质子化比例"）
+      if (tRefPH == null) return 0;
+      return speciation(t.system, tRefPH, titrantI, model).dbar - speciation(t.system, pHt, I, model).dbar;
+    }
+
+    const warnings = ['中和计算分别求原液、试剂与加液后离子强度；电导率为有限浓度近似，高盐混合体系未校准。'];
+    const titrantCounter=tRefPH==null ? null : counterOf({components:[{system:t.system,concM:tConcM}],pH:tRefPH},titrantI,1);
+    function finalIons(pHstate, ionicI, dose) {
+      const vol=V+dose,arr=sampleIons(pHstate,ionicI,vol);
+      const sp=speciation(t.system,pHstate,ionicI,model);
+      sp.fracs.forEach((f,k)=>{if(sp.charges[k]) arr.push({z:sp.charges[k],concM:tConcM*dose*f/vol,
+        transport:isArg(t.system.id)?'arg':null,lambda:speciesLambda(t.system.id,k,sp.charges[k])});});
+      if(titrantCounter) arr.push({...titrantCounter,concM:titrantCounter.moles*dose/vol});
+      return arr;
+    }
+    // Independent forward equilibrium for the chart cursor's arbitrary dose.
+    if (input.probeDoseL != null) {
+      const dose=input.probeDoseL;
+      if(!Number.isFinite(dose) || dose<0 || tRefPH==null) throw new Error('滴定体积或试剂pH无效');
+      const probeComps=live.concat([{system:t.system,conc:tConcM,vol:dose,fromPH:tRefPH,sourceI:titrantI}]);
+      const probeSolutions=solutions.concat([{vol:dose,fromPH:tRefPH}]);
+      let endI=I,ph=mixPH;
+      for(let j=0;j<150;j++) {
+        ph=solveMixPH(probeComps,endI,model,probeSolutions);
+        const next=ionStrength(finalIons(ph,endI,dose),ph);
+        if(Math.abs(next-endI)<1e-9) return {pH:ph,ionicStrength:endI,converged:true};
+        endI=(endI+next)/2;
+      }
+      return {pH:null,ionicStrength:endI,converged:false};
+    }
+    // 滴定方向由质子守恒的符号决定：n>0 需加碱，n<0 需加酸（不依赖 pHt 与 mixPH 的大小比较）。
+    // 可行性判据 = n 与 capacity 同号，等价于目标 pH 落在 [mixPH, 试剂pH] 区间内。
+    const titrantIsAcid = tRefPH != null && tRefPH < mixPH;
+    function doseAt(pHt) {
+      if(tRefPH==null || !(tConcM>0)) return {v:null,I:null,n:needBaseMol(pHt),g:effectiveFrac(pHt)};
+      let endI=I,v=0,n=0,g=0,converged=false;
+      for(let j=0;j<200;j++) {
+        n=V*water(pHt)-solutions.reduce((s,c)=>s+c.vol*water(c.fromPH),0);
+        for(const c of live) n+=c.conc*c.vol*(speciation(c.system,pHt,endI,model).dbar-speciation(c.system,c.fromPH,c.sourceI,model).dbar);
+        g=speciation(t.system,tRefPH,titrantI,model).dbar-speciation(t.system,pHt,endI,model).dbar;
+        const capacity=tConcM*g+water(tRefPH)-water(pHt);
+        // 同号 => 方向可行且 v=n/capacity>0；异号 => 试剂能力方向相反，目标不可达。
+        if(!((n>0&&capacity>0)||(n<0&&capacity<0))) return {v:null,I:null,n,g};
+        v=n/capacity;
+        const next=ionStrength(finalIons(pHt,endI,v),pHt);
+        if(Math.abs(next-endI)<1e-10) {converged=true;break;}
+        endI=(next+endI)/2;
+      }
+      if(!converged) { warnings.push('中和终态迭代未收敛，不提供推荐体积。');return {v:null,I:null,n,g}; }
+      return {v,I:endI,n,g};
+    }
+    const tol=input.tolerancePH ?? .2;
+    const mid=doseAt(input.targetPH),lo=doseAt(input.targetPH-tol),hi=doseAt(input.targetPH+tol);
+    const vMid=mid.v,vLo=lo.v,vHi=hi.v,nMid=mid.n,nLo=lo.n,nHi=hi.n,gMid=mid.g,gLo=lo.g,gHi=hi.g;
+    const capacityOf=(pHt,r)=>tRefPH==null || !Number.isFinite(r.g) ? null : tConcM*r.g+water(tRefPH)-water(pHt);
+    const capacityMid=capacityOf(input.targetPH,mid),capacityLo=capacityOf(input.targetPH-tol,lo),capacityHi=capacityOf(input.targetPH+tol,hi);
+    // 方向与可达性：剂量 v→∞ 时混合液趋近纯试剂，故可达 pH 区间 = [mixPH, 试剂pH]（端点为极限值）。
+    // 目标在该区间内即可行；区间外只能报出最近可达 pH。
+    const reachLo = tRefPH == null ? null : Math.min(mixPH, tRefPH);
+    const reachHi = tRefPH == null ? null : Math.max(mixPH, tRefPH);
+    const nearestReachablePH = pHx => {
+      if (reachLo == null) return null;
+      return pHx < reachLo ? reachLo : (pHx > reachHi ? reachHi : pHx);
+    };
+    const direction = tRefPH == null ? null
+      : (tRefPH < mixPH ? 'acid' : (tRefPH > mixPH ? 'base' : null));
+    let reachInfo = null;
+    if (vMid == null && tRefPH != null) {
+      const nearest = nearestReachablePH(input.targetPH);
+      const infeasibleByDirection = (nMid > 0 && direction === 'acid') || (nMid < 0 && direction === 'base');
+      const nTxt = Number.isFinite(nMid) ? nMid.toExponential(2) : '—';
+      if (infeasibleByDirection) {
+        warnings.push(`目标 pH ${input.targetPH.toFixed(2)} 与当前试剂方向相反：混合后 pH 为 ${mixPH.toFixed(2)}，${direction === 'acid' ? `加入 ${t.name} 只能降低 pH` : `加入 ${t.name} 只能升高 pH`}。当前条件可达到的 pH 为 ${nearest.toFixed(2)}（需净${nMid > 0 ? '加碱' : '加酸'} ${nTxt} mol）。请更换方向相反的试剂。`);
+      } else {
+        warnings.push(`目标 pH ${input.targetPH.toFixed(2)} 超出当前试剂可达范围 ${reachLo.toFixed(2)}–${reachHi.toFixed(2)}（试剂 ${t.name} 自身 pH 为 ${tRefPH}）。当前条件可达到的 pH 为 ${nearest.toFixed(2)}。`);
+      }
+      reachInfo = { nearest, lo: reachLo, hi: reachHi, reason: infeasibleByDirection ? 'wrongDirection' : 'beyondReagent' };
+    }
+    if (direction) {
+      warnings.push(`本次中和为「${direction === 'acid' ? '加酸' : '加碱'}」路径：向 pH ${mixPH.toFixed(2)} 的混合液加入 ${t.name}${tRefPH != null ? `（试剂 pH ${tRefPH}）` : ''}。`);
+    }
+    // |g| 反映试剂在该 pH 处的可用当量强度，与加酸/加碱方向无关。
+    if (Number.isFinite(gMid) && Math.abs(gMid) <= 0.01) warnings.push('目标 pH 接近或高于中和试剂的 pKa，试剂几乎无中和能力，请更换试剂');
+    if (vMid != null && vMid / V > 0.2) warnings.push(`试剂体积约为样品的 ${(100 * vMid / V).toFixed(0)}%，稀释明显，建议用更浓试剂`);
+    if (x > .7+1e-12) {
+      const capText=Number.isFinite(capacityMid) ? `模型采用的试剂有效当量浓度约为 ${capacityMid.toFixed(3)} mol H⁺/L。` : '';
+      warnings.push(`B占比超过70%时，结果主要由Buffer B的酸容量和中和试剂实测效价决定；当前没有高B%实验校准。${capText}若实测用量偏小，请优先核对Buffer B实际浓度、pH及试剂母液的实测pH/滴定效价。`);
+    }
+
+    // 中和前（未加试剂）电导率
+    const conductivityBefore = conductivityOf(sampleIons(mixPH,I,V), mixPH);
+    // 中和后（加入中值体积试剂）电导率 + 终态 pH 复合验算
+    let conductivity = null, checkPH = null;
+    if (vMid != null) {
+      conductivity = conductivityOf(finalIons(input.targetPH,mid.I,vMid), input.targetPH);
+      // 复合验算：把试剂当作一个组分，质子守恒求解混合平衡 pH，应 ≈ 目标 pH
+      const compsChk = live.map(c => ({ system: c.system, conc: c.conc, vol: c.vol, fromPH: c.fromPH, sourceI: c.sourceI }));
+      compsChk.push({ system: t.system, conc: tConcM, vol: vMid, fromPH: tRefPH != null ? tRefPH : mixPH, sourceI: titrantI });
+      checkPH = solveMixPH(compsChk, mid.I, model, solutions.concat([
+        { vol: vMid, fromPH: tRefPH != null ? tRefPH : mixPH }
+      ]));
+      if (!Number.isFinite(checkPH) || Math.abs(checkPH - input.targetPH) > 0.02) {
+        warnings.push('中和后 pH 复核偏离目标，请检查输入并重新计算。');
+      }
+    }
+
+    return {
+      mixPH, ionicStrength: I, finalIonicStrength: mid.I,
+      direction, reachable: reachInfo,
+      needMol: { mid: nMid, lo: nLo, hi: nHi },
+      effFrac: { mid: gMid, lo: gLo, hi: gHi },
+      titrantCapacityM: { mid: capacityMid, lo: capacityLo, hi: capacityHi },
+      volL: { mid: vMid, lo: vLo, hi: vHi },
+      finalVolL: vMid != null ? V + vMid : null,
+      conductivity, conductivityBefore, checkPH,
+      chargeResidual: vMid==null ? null : finalIons(input.targetPH,mid.I,vMid).reduce((s,a)=>s+a.z*a.concM,0)-water(input.targetPH),
+      warnings,
+    };
+  }
+
+  const Engine = {
+    logGamma, gamma, apparentPka, speciation, solveMixPH,
+    calcRecipe, calcNeutralization, conductivityOf, calibratedInput,
+    _backCheckPH: backCheckPH,
+    consts: { A_DH, B_DH, ION_SIZE, KW },
+  };
+  global.Engine = Engine;
+  if (typeof module !== 'undefined' && module.exports) module.exports = Engine;
+})(typeof window !== 'undefined' ? window : globalThis);
+
+</script>
+<script>
+/* 默认数据库：母液 + 缓冲体系（与 HTML 内置一致，供 node 自测用） */
+(function (global) {
+  'use strict';
+
+  // 母液：concM 摩尔浓度；na/cl 每分子带入的 Na+/Cl- 数；refpH 母液实测 pH；pct 用于 % w/v 类
+  const DEFAULT_STOCKS = [
+    { id: 'ca',       name: 'CA',               concM: 0.2,  refpH: 1.9,  na: 0, cl: 0, type: 'acid' },
+    { id: 'na3ca',    name: 'Na3CA',            concM: 0.2,  refpH: 7.6,  na: 3, cl: 0, type: 'base' },
+    { id: 'h3po4',    name: 'H3PO4',            concM: 0.2,  refpH: 1.6,  na: 0, cl: 0, type: 'acid' },
+    { id: 'nah2po4',  name: 'NaH2PO4',          concM: 0.2,  refpH: 4.3,  na: 1, cl: 0, type: 'acid' },
+    { id: 'na2hpo4',  name: 'Na2HPO4',          concM: 0.2,  refpH: 9.0,  na: 2, cl: 0, type: 'base' },
+    { id: 'hac',      name: 'HAc',              concM: 0.2,  refpH: 2.7,  na: 0, cl: 0, type: 'acid' },
+    { id: 'naac',     name: 'NaAc',             concM: 0.2,  refpH: 8.3,  na: 1, cl: 0, type: 'base' },
+    { id: 'tris',     name: 'Tris',             concM: 0.2,  refpH: 11.6, na: 0, cl: 0, type: 'base', pka: 8.07 },
+    { id: 'tris_hcl', name: 'Tris-HCl',         concM: 0.2,  refpH: 4.6,  na: 0, cl: 1, type: 'acid' },
+    { id: 'his',      name: 'His',              concM: 0.2,  refpH: 7.6,  na: 0, cl: 0, type: 'base' },
+    { id: 'his_hcl',  name: 'His-HCl',          concM: 0.2,  refpH: 4.0,  na: 0, cl: 1, type: 'acid' },
+    // noTitrant：不出现在中和试剂候选（咪唑是洗脱添加剂，不作中和试剂）
+    { id: 'imidazole',name: '咪唑',             concM: 2.4,  refpH: 8.1,  na: 0, cl: 0, type: 'base', pka: 7.00, rev: 3, noTitrant: true },
+    { id: 'gly',      name: 'Gly',              concM: 0.2,  refpH: 5.98, na: 0, cl: 0, type: 'base' },
+    { id: 'nacl',     name: 'NaCl',             concM: 5,    refpH: null, na: 1, cl: 1, type: 'salt' },
+    { id: 'arg_hcl',  name: 'Arg-HCl',          concM: 2,    refpH: 5.3,  na: 0, cl: 1, type: 'salt', pka: 9.04, rev: 2 },
+    { id: 'arg',      name: 'Arg',              concM: 1,    refpH: 9.0,  na: 0, cl: 0, type: 'titrant', pka: 9.04 },
+    { id: 'gdnhcl',   name: 'GdnHCl 盐酸胍',    concM: 6,    refpH: 6.0,  na: 0, cl: 1, type: 'salt' },
+    { id: 'suc',      name: '蔗糖 SUC 60%',     concM: null, refpH: null, na: 0, cl: 0, type: 'neutral', pct: 60 },
+    // 10× PBS：盐组成按 Sambrook（NaCl 1.37M、KCl 27mM）；磷酸盐总量 100mM，
+    // dbar=1.79 为引擎在 1× 离子强度、pH 7.4 下的自洽值（即该母液按标签 pH 7.4 锚定，
+    // 加入 pH7.4 体系时无需微调）。Na+/K+/Cl- 计数已按此自洽。
+    { id: 'pbs10x',   name: 'PBS 10× pH7.4',    concM: null, refpH: 7.4,  na: 0, cl: 0, type: 'premix', rev: 4,
+      premix: { sysId: 'pb', concM: 0.100, dbar: 1.79,
+        saltIons: [ { z: 1, concM: 1.531, lambda: 50.1 }, { z: 1, concM: 0.045, lambda: 73.5 }, { z: -1, concM: 1.397, lambda: 76.3 } ] } },
+  ];
+
+  // 缓冲体系：steps[{pKa,zA,zB}]；stocks 引用母液并标注 d（已解离质子数）
+  const DEFAULT_SYSTEMS = [
+    { id: 'pb', name: 'PB', enabled: true, range: [6.2, 8.2],
+      steps: [ { pKa: 2.15, zA: 0, zB: -1 }, { pKa: 7.20, zA: -1, zB: -2 }, { pKa: 12.35, zA: -2, zB: -3 } ],
+      stocks: [ { stockId: 'h3po4', dStock: 0 }, { stockId: 'nah2po4', dStock: 1 }, { stockId: 'na2hpo4', dStock: 2 } ] },
+    { id: 'acetate', name: 'NaAc', enabled: true, range: [3.8, 5.8],
+      steps: [ { pKa: 4.76, zA: 0, zB: -1 } ],
+      stocks: [ { stockId: 'hac', dStock: 0 }, { stockId: 'naac', dStock: 1 } ] },
+    { id: 'tris', name: 'Tris', enabled: true, range: [7.1, 9.1],
+      steps: [ { pKa: 8.07, zA: 1, zB: 0 } ],
+      stocks: [ { stockId: 'tris_hcl', dStock: 0 }, { stockId: 'tris', dStock: 1 } ] },
+    { id: 'citrate', name: 'CA', enabled: true, range: [3.0, 6.2],
+      steps: [ { pKa: 3.13, zA: 0, zB: -1 }, { pKa: 4.76, zA: -1, zB: -2 }, { pKa: 6.40, zA: -2, zB: -3 } ],
+      stocks: [ { stockId: 'ca', dStock: 0 }, { stockId: 'na3ca', dStock: 3 } ] },
+    { id: 'histidine', name: 'His', enabled: true, range: [5.0, 7.0],
+      steps: [ { pKa: 1.82, zA: 2, zB: 1 }, { pKa: 6.00, zA: 1, zB: 0 }, { pKa: 9.17, zA: 0, zB: -1 } ],
+      stocks: [ { stockId: 'his_hcl', dStock: 1 }, { stockId: 'his', dStock: 2 } ] },
+    { id: 'glycine', name: 'Gly', enabled: true, range: [2.2, 3.2], range2: [8.6, 10.6],
+      steps: [ { pKa: 2.34, zA: 1, zB: 0 }, { pKa: 9.60, zA: 0, zB: -1 } ],
+      stocks: [ { stockId: 'gly', dStock: 1 } ] },
+    // PBS 作为缓冲体系（预混 10× 母液），浓度单位是"×"（1 = 1×）
+    { id: 'pbs', name: 'PBS（10× 母液）', enabled: true, premix: true, stockId: 'pbs10x', unit: '×', range: [7.0, 7.8] },
+  ];
+
+  // Arg 平衡体系（Arg-HCl 添加剂 / Arg 中和试剂用）
+  const ARG_SYSTEM = { id: 'arg_sys', name: 'Arg', steps: [ { pKa: 2.17, zA: 2, zB: 1 }, { pKa: 9.04, zA: 1, zB: 0 }, { pKa: 12.48, zA: 0, zB: -1 } ] };
+
+  // 已从默认缓冲体系中移除的条目：若用户未自定义过（内容与旧默认完全一致），迁移时自动删除
+  const OBSOLETE_SYSTEMS = [
+    { id: 'imidazole', match: { id: 'imidazole', name: '咪唑', enabled: true, range: [6, 8],
+      steps: [ { pKa: 7, zA: 1, zB: 0 } ], stocks: [ { stockId: 'imidazole', dStock: 1 } ] } },
+  ];
+
+  // 显示名英文化迁移（rev 1）：老用户 localStorage 里的中文名一次性改为英文缩写
+  const RENAME_REV = 1;
+  const RENAME_MAP = {
+    stocks: {
+      ca: 'CA', na3ca: 'Na3CA', h3po4: 'H3PO4', hac: 'HAc', naac: 'NaAc',
+      tris: 'Tris', his: 'His', gly: 'Gly', arg: 'Arg',
+    },
+    systems: {
+      pb: 'PB', acetate: 'NaAc', citrate: 'CA', histidine: 'His', glycine: 'Gly',
+    },
+  };
+
+  const DefaultDB = { stocks: DEFAULT_STOCKS, systems: DEFAULT_SYSTEMS, argSystem: ARG_SYSTEM, obsoleteSystems: OBSOLETE_SYSTEMS, renameRev: RENAME_REV, renameMap: RENAME_MAP };
+  global.DefaultDB = DefaultDB;
+  if (typeof module !== 'undefined' && module.exports) module.exports = DefaultDB;
+})(typeof window !== 'undefined' ? window : globalThis);
+
+</script>
+<script>
+/* Self-contained SVG pH heatmap + titration curve; no network dependency. */
+(function(global){
+ 'use strict';
+ let resizeObserver;
+ const valid=v=>Number.isFinite(v)&&v>=0;
+ // 不可达时 volL.mid 为 null，纵轴会退化成兜底常数（刻度无意义）。
+ // 此时按 5% 样品体积的参考剂量给一个有量级的纵轴，并在下方标注为参考刻度。
+ function fallbackYmax(input,lower,upper){
+  try{
+   const V=input.sampleVolL,conc=input.titrant&&input.titrant.concM>0?input.titrant.concM:.2;
+   const b=lower===upper?lower:(lower+upper)/2;
+   const r=Engine.calcNeutralization({...input,fracB:b/100});
+   const amp=Number.isFinite(r.mixPH)?Math.abs(r.mixPH-input.targetPH):1;
+   if(amp<.05)return Math.max(V*.05*conc,.05*V)*1.18;
+   return Math.max(V*.05*conc/(amp*8),.02*V)*1.18;
+  }catch(e){return .01*1.18;}
+ }
+ const heatColor=(p,min,max)=>{
+  if(!Number.isFinite(p))return '#e2e8f0';
+  const t=Math.max(0,Math.min(1,(p-min)/Math.max(max-min,1e-9)));
+  return `hsl(212,85%,${96-62*t}%)`;
+ };
+ function heatData(container,input,lower,upper,ymax){
+  if(container.__neutralHeat)return container.__neutralHeat;
+  const cols=lower===upper?1:16,rows=12,cells=[],values=[];
+  for(let row=0;row<rows;row++){
+   const dose=ymax*(1-(row+.5)/rows);
+   for(let col=0;col<cols;col++){
+    const b=lower===upper?lower:lower+(upper-lower)*(col+.5)/cols;
+    const state=Engine.calcNeutralization({...input,fracB:b/100,probeDoseL:dose});
+    const pH=state.pH;
+    cells.push({row,col,b,dose,pH});if(Number.isFinite(pH))values.push(pH);
+   }
+  }
+  let min=values.length?Math.min(...values):0,max=values.length?Math.max(...values):14;
+  if(max-min<.2){const mid=(min+max)/2;min=mid-.1;max=mid+.1;}
+  // 每行 pH 极值：用于把"目标 pH"精确映射到纵轴位置，从而标注不可达区域。
+  const rowPH=[];
+  for(let row=0;row<rows;row++){
+   const vs=cells.filter(c=>c.row===row&&Number.isFinite(c.pH)).map(c=>c.pH);
+   if(vs.length)rowPH.push({row,min:Math.min(...vs),max:Math.max(...vs)});
+  }
+  container.__neutralHeat={cols,rows,cells,min,max,rowPH};return container.__neutralHeat;
+ }
+ global.NeutralChart={render(container,points,input,lower,upper){
+  resizeObserver?.disconnect();
+  const W=Math.max(260,container.clientWidth),H=320,L=70,R=W-100,T=35,B=260;
+  const all=points.flatMap(p=>[p.r.volL.mid,p.r.volL.lo,p.r.volL.hi]).filter(valid);
+  const curveUnreachable=all.length===0;
+  const ymax=curveUnreachable?fallbackYmax(input,lower,upper):Math.max(...all,1e-6)*1.18;
+  const scale=ymax<.001?1e6:1000,unit=scale===1e6?'µL':'mL';
+  const x=v=>lower===upper?(L+R)/2:L+(v-lower)/(upper-lower)*(R-L);
+  const y=v=>B-v/ymax*(B-T);
+  const f=v=>Number(v.toFixed(3)).toString();
+  // 坐标轴刻度按数量级自适应精度，避免 451.462 这类多位小数刻度
+  const ft=v=>{const a=Math.abs(v),d=a>=100?0:a>=10?1:2;let s=v.toFixed(d);if(s.indexOf('.')>0)s=s.replace(/0+$/,'').replace(/\.$/,'');return s;};
+  const heat=heatData(container,input,lower,upper,ymax),cw=(R-L)/heat.cols,ch=(B-T)/heat.rows;
+  const cells=heat.cells.map(c=>`<rect class="ph-heat-cell" data-ph="${Number.isFinite(c.pH)?c.pH:''}" data-b="${c.b}" data-dose="${c.dose}" x="${L+c.col*cw}" y="${T+c.row*ch}" width="${cw+.25}" height="${ch+.25}" fill="${heatColor(c.pH,heat.min,heat.max)}"/>`).join('');
+  // 目标 pH 是否落在该区域实际可达的 pH 值域之外 => 任何 B%/剂量组合都达不到。
+  const tgt=input.targetPH;
+  const pHInBand=tgt>=heat.min-1e-9&&tgt<=heat.max+1e-9;
+  const yOfRow=q=>{
+   const rows=heat.rowPH;if(!rows.length)return null;
+   if(q<=rows[0].min)return T;
+   for(let i=1;i<rows.length;i++){
+    const pr=rows[i-1],cu=rows[i];
+    if(q<=cu.min){const span=Math.max(1e-9,cu.min-pr.min);const f=(q-pr.min)/span;return T+ch*((pr.row+f*(cu.row-pr.row))+.5);}
+   }
+   const last=rows[rows.length-1];
+   if(q<=last.max)return T+ch*(last.row+.5);
+   return B;
+  };
+  let unreachableBand='',unreachableNote='';
+  if(!pHInBand){
+   const yb=yOfRow(tgt);const tooHigh=tgt>heat.max;
+   const yEdge=tooHigh?T:B;
+   const yTop=Math.min(yb,yEdge),yBot=Math.max(yb,yEdge);
+   unreachableBand=`<rect class="unreachable-band" data-edge-pH="${tooHigh?heat.max:heat.min}" x="${L}" y="${yTop}" width="${Math.max(0,R-L)}" height="${Math.max(0,yBot-yTop)}" fill="url(#unreachableHatch)" stroke="#64748b" stroke-dasharray="4 3" stroke-width="1"/>`;
+   unreachableNote=`<span style="color:#475569">▨ 不可达区（任何加液量都到不了 ${tgt}，${tooHigh?'该区域最高只能到约 '+heat.max.toFixed(2):'该区域最低只能到约 '+heat.min.toFixed(2)}）</span>`;
+  }
+  const dir=input.__dir||null;
+  const dirLabel=dir==='acid'?'加酸':(dir==='base'?'加碱':null);
+  let grid='';
+  for(let k=0;k<=5;k++){
+   const yy=T+(B-T)*k/5,xx=L+(R-L)*k/5;
+   grid+=`<path d="M${L},${yy}H${R} M${xx},${T}V${B}" stroke="#ffffff" stroke-opacity=".58" fill="none"/><text x="${L-12}" y="${yy+5}" text-anchor="end">${ft(ymax*(1-k/5)*scale)}</text>`;
+   grid+=`<text x="${xx}" y="${B+26}" text-anchor="middle">${ft(lower+(upper-lower)*k/5)}%</text>`;
+  }
+  const runs=predicate=>{const out=[];let run=[];for(const p of points){if(predicate(p))run.push(p);else if(run.length){out.push(run);run=[];}}if(run.length)out.push(run);return out;};
+  let bands='',bounds='';
+  for(const run of runs(p=>valid(p.r.volL.mid)&&valid(p.r.volL.lo)&&valid(p.r.volL.hi))){
+   const coords=run.map(p=>`${x(p.b)},${y(p.r.volL.lo)}`).concat([...run].reverse().map(p=>`${x(p.b)},${y(p.r.volL.hi)}`));
+   bands+=`<polygon points="${coords.join(' ')}" fill="#ffffff" opacity=".18"/>`;
+   for(const key of ['lo','hi'])bounds+=`<polyline class="tolerance-boundary" points="${run.map(p=>`${x(p.b)},${y(p.r.volL[key])}`).join(' ')}" fill="none" stroke="#17243b" stroke-opacity=".62" stroke-width="1.5" stroke-dasharray="5 4"/>`;
+  }
+  const lineRuns=runs(p=>valid(p.r.volL.mid));
+  const targetHalo=lineRuns.map(run=>run.length===1?`<circle class="target-dose-halo" cx="${x(run[0].b)}" cy="${y(run[0].r.volL.mid)}" r="5" fill="#ffffff"/>`:`<polyline class="target-dose-halo" points="${run.map(p=>`${x(p.b)},${y(p.r.volL.mid)}`).join(' ')}" fill="none" stroke="#ffffff" stroke-width="6" stroke-linejoin="round"/>`).join('');
+  const targetLine=lineRuns.map(run=>run.length===1?`<circle class="target-dose-line" cx="${x(run[0].b)}" cy="${y(run[0].r.volL.mid)}" r="3.5" fill="#f97316"/>`:`<polyline class="target-dose-line" points="${run.map(p=>`${x(p.b)},${y(p.r.volL.mid)}`).join(' ')}" fill="none" stroke="#f97316" stroke-width="3" stroke-linejoin="round"/>`).join('');
+  const lowColor=heatColor(heat.min,heat.min,heat.max),highColor=heatColor(heat.max,heat.min,heat.max);
+  container.innerHTML=`<div class="chart-legend"><span class="heat-legend"><i style="display:inline-block;width:90px;height:10px;border-radius:5px;background:linear-gradient(90deg,${lowColor},${highColor});margin-right:7px"></i>预计pH ${heat.min.toFixed(2)}–${heat.max.toFixed(2)}（颜色越深越高）</span><span style="color:#ea580c">━━ 达到目标 pH ${input.targetPH}</span><span style="color:#334155">┄ 目标 pH ±${input.tolerancePH}</span>${unreachableNote}</div>
+  ${curveUnreachable?'<div class="warnbox">当前条件下橙色目标剂量曲线无解（所选范围内没有可行的加液量），纵轴改用参考刻度，仅供估计量级。</div>':''}
+  <svg id="neutChart" viewBox="0 0 ${W} ${H}" role="img" aria-label="Buffer B占比、中和试剂体积与预计pH热力图" style="width:100%;display:block;touch-action:none;font-family:inherit;font-size:14px;fill:#536174">
+  <defs><pattern id="unreachableHatch" width="8" height="8" patternTransform="rotate(45)" patternUnits="userSpaceOnUse"><rect width="8" height="8" fill="#e2e8f0" opacity=".45"/><line x1="0" y1="0" x2="0" y2="8" stroke="#94a3b8" stroke-width="3"/></pattern></defs>
+  <rect width="${W}" height="${H}" fill="white"/><g id="phHeatmap" data-ph-min="${heat.min}" data-ph-max="${heat.max}" data-heat-cells="${heat.cells.length}" data-target-reachable="${pHInBand}" data-direction="${dir||''}" shape-rendering="crispEdges">${cells}${unreachableBand}</g>${grid}${bands}${bounds}${targetHalo}${targetLine}
+  <text x="${L}" y="20">${dirLabel?dirLabel+'剂':'中和试剂'}体积 (${unit})${curveUnreachable?' · 参考刻度':''}</text><text x="${(L+R)/2}" y="310" text-anchor="middle">Buffer B 占比 (%)</text>
+  <g id="crosshair" visibility="hidden" pointer-events="none">
+   <path id="crossLines" stroke="#0f172a" stroke-dasharray="5 4" fill="none"/><circle id="crossDot" r="4" fill="#0f172a" stroke="white" stroke-width="2"/>
+   <g id="crossX"><rect x="-40" y="0" width="80" height="25" rx="4" fill="#17243b"/><text y="17" text-anchor="middle" fill="white"/></g>
+   <g id="crossY"><rect x="0" y="-13" width="95" height="26" rx="4" fill="#17243b"/><text x="8" y="5" fill="white"/></g>
+   <g id="crossTip"><rect width="220" height="94" rx="8" fill="#17243b" opacity=".94"/><text x="14" y="25" fill="white"/><text x="14" y="51" fill="white"/><text x="14" y="77" fill="#93c5fd"/></g>
+  </g><rect id="chartHit" x="${L}" y="${T}" width="${R-L}" height="${B-T}" fill="transparent" style="cursor:crosshair"/></svg>
+  <div id="chartReadout" class="chart-readout" aria-live="off">在热力图内移动光标：横向选B%，纵向选加液体积，实时反算预计pH。</div>`;
+  const svg=container.querySelector('svg'),cross=container.querySelector('#crosshair'),hit=container.querySelector('#chartHit'),readout=container.querySelector('#chartReadout');
+  let pending=null,frame=0;
+  function update(){frame=0;if(!pending||!svg.isConnected)return;const {xx,yy}=pending;
+   const b=lower===upper?lower:lower+(xx-L)/(R-L)*(upper-lower),dose=(B-yy)/(B-T)*ymax;
+   cross.setAttribute('visibility','visible');container.querySelector('#crossLines').setAttribute('d',`M${xx},${T}V${B} M${L},${yy}H${R}`);
+   const dot=container.querySelector('#crossDot');dot.setAttribute('cx',xx);dot.setAttribute('cy',yy);
+   const tx=container.querySelector('#crossX'),ty=container.querySelector('#crossY');tx.setAttribute('transform',`translate(${xx},${B+2})`);ty.setAttribute('transform',`translate(${R+3},${yy})`);
+   tx.querySelector('text').textContent=b.toFixed(2)+'%';ty.querySelector('text').textContent=f(dose*scale)+' '+unit;
+   const state=Engine.calcNeutralization({...input,fracB:b/100,probeDoseL:dose});
+   const tip=container.querySelector('#crossTip');tip.setAttribute('transform',`translate(${Math.max(8,Math.min(W-228,xx>(L+R)/2?xx-235:xx+15))},${yy>T+110?yy-108:yy+15})`);
+   const labels=tip.querySelectorAll('text');labels[0].textContent=`Buffer B  ${b.toFixed(2)}%`;labels[1].textContent=`加液体积  ${f(dose*scale)} ${unit}`;labels[2].textContent=`预计 pH  ${state.pH==null?'未收敛':state.pH.toFixed(3)}`;
+   readout.innerHTML=`<span>Buffer B <b>${b.toFixed(2)}%</b></span><span>加液体积 <b>${f(dose*scale)} ${unit}</b></span><span>预计 pH <b>${state.pH==null?'未收敛':state.pH.toFixed(3)}</b></span><span class="muted">目标 ${input.targetPH} · 光标自由取点</span>`;
+   readout.dataset.b=b;readout.dataset.dose=dose;readout.dataset.ph=state.pH??'';
+  }
+  hit.addEventListener('pointermove',e=>{const pt=svg.createSVGPoint();pt.x=e.clientX;pt.y=e.clientY;const a=pt.matrixTransform(svg.getScreenCTM().inverse());pending={xx:Math.max(L,Math.min(R,a.x)),yy:Math.max(T,Math.min(B,a.y))};if(!frame)frame=requestAnimationFrame(update);});
+  hit.addEventListener('pointerleave',()=>{pending=null;if(frame)cancelAnimationFrame(frame);frame=0;cross.setAttribute('visibility','hidden');readout.textContent='在热力图内移动光标查看当前B%、加液体积与预计pH。';});
+  resizeObserver=new ResizeObserver(()=>{
+   if(!container.isConnected){resizeObserver.disconnect();return;}
+   if(Math.abs(Math.max(260,container.clientWidth)-W)>.5)global.NeutralChart.render(container,points,input,lower,upper);
+  });
+  resizeObserver.observe(container);
+ }};
+})(globalThis);
+
+</script>
+<script>
+/* app.js — 界面逻辑（依赖 engine.js 的 Engine 与 db.js 的 DefaultDB） */
+(function () {
+  'use strict';
+  const LS_KEY = 'bufferCalcDB_v1';
+  const $ = s => document.querySelector(s);
+  const $$ = s => Array.from(document.querySelectorAll(s));
+
+  /* ---------- 数据持久化与迁移 ---------- */
+  function canon(o) { // 键排序的稳定序列化，用于迁移比对
+    if (Array.isArray(o)) return '[' + o.map(canon).join(',') + ']';
+    if (o && typeof o === 'object') return '{' + Object.keys(o).sort().map(k => JSON.stringify(k) + ':' + canon(o[k])).join(',') + '}';
+    return JSON.stringify(o);
+  }
+  function loadDB() {
+    let d = null;
+    try {
+      const raw = localStorage.getItem(LS_KEY);
+      if (raw) {
+        const p = JSON.parse(raw);
+        if (p && Array.isArray(p.stocks) && Array.isArray(p.systems)) d = p;
+      }
+    } catch (e) { /* 忽略损坏数据 */ }
+    if (!d) return JSON.parse(JSON.stringify({ stocks: DefaultDB.stocks, systems: DefaultDB.systems }));
+    // 迁移1：出厂新增条目按 id 并入；带更高 rev 的默认条目覆盖旧版
+    let changed = false;
+    const deletedStocks = new Set(d.deletedDefaults?.stocks || []);
+    const deletedSystems = new Set(d.deletedDefaults?.systems || []);
+    for (const s of DefaultDB.stocks) {
+      if (deletedStocks.has(s.id)) continue;
+      const i = d.stocks.findIndex(x => x.id === s.id);
+      if (i < 0) { d.stocks.push(JSON.parse(JSON.stringify(s))); changed = true; }
+      else if ((s.rev || 0) > (d.stocks[i].rev || 0)) {
+        if(s.id==='pbs10x' && s.rev===4) {
+          const old=JSON.parse(JSON.stringify(s)); old.rev=3; old.premix.saltIons[0].concM=1.549;
+          if(canon(d.stocks[i])!==canon(old)) continue; // preserve custom PBS composition
+        }
+        d.stocks[i] = JSON.parse(JSON.stringify(s)); changed = true;
+      }
+    }
+    for (const s of DefaultDB.systems) {
+      if (deletedSystems.has(s.id)) continue;
+      const i = d.systems.findIndex(x => x.id === s.id);
+      if (i < 0) { d.systems.push(JSON.parse(JSON.stringify(s))); changed = true; }
+      else if ((s.rev || 0) > (d.systems[i].rev || 0)) { d.systems[i] = JSON.parse(JSON.stringify(s)); changed = true; }
+    }
+    const oldHis={id:'histidine',name:'His',enabled:true,range:[5,7],steps:[{pKa:6,zA:1,zB:0}],stocks:[{stockId:'his_hcl',dStock:0},{stockId:'his',dStock:1}]};
+    const hi=d.systems.findIndex(s=>s.id==='histidine');
+    if(hi>=0 && canon(d.systems[hi])===canon(oldHis)) { d.systems[hi]=JSON.parse(JSON.stringify(DefaultDB.systems.find(s=>s.id==='histidine'))); changed=true; }
+    // 迁移2：已废弃的默认体系，若用户从未修改过则自动移除
+    for (const ob of (DefaultDB.obsoleteSystems || [])) {
+      const i = d.systems.findIndex(x => x.id === ob.id);
+      if (i >= 0 && canon(d.systems[i]) === canon(ob.match)) {
+        d.systems.splice(i, 1); changed = true;
+      }
+    }
+    // 迁移3：显示名英文化（一次性执行，之后用户在管理页自改的名字不再覆盖）
+    if ((d.renameRev || 0) < (DefaultDB.renameRev || 0) && DefaultDB.renameMap) {
+      for (const id of Object.keys(DefaultDB.renameMap.stocks || {})) {
+        const s = d.stocks.find(x => x.id === id);
+        if (s) { s.name = DefaultDB.renameMap.stocks[id]; changed = true; }
+      }
+      for (const id of Object.keys(DefaultDB.renameMap.systems || {})) {
+        const s = d.systems.find(x => x.id === id);
+        if (s) { s.name = DefaultDB.renameMap.systems[id]; changed = true; }
+      }
+      d.renameRev = DefaultDB.renameRev;
+    }
+    if (changed) localStorage.setItem(LS_KEY, JSON.stringify(d));
+    return d;
+  }
+  function markDeletedDefault(kind, id) {
+    if (!DefaultDB[kind].some(x => x.id === id)) return;
+    DB.deletedDefaults = DB.deletedDefaults || {};
+    const ids = new Set(DB.deletedDefaults[kind] || []);
+    ids.add(id);
+    DB.deletedDefaults[kind] = Array.from(ids);
+  }
+  function saveDB() { localStorage.setItem(LS_KEY, JSON.stringify(DB)); }
+  let DB = loadDB();
+
+  function stockById(id) { return DB.stocks.find(s => s.id === id); }
+  // 供引擎使用的水合体系：stocks 换成完整母液对象
+  function hydrate(sysDef) {
+    const s = JSON.parse(JSON.stringify(sysDef));
+    s.stocks = (s.stocks || []).map(x => {
+      const st = stockById(x.stockId);
+      return st ? Object.assign({}, st, { dStock: x.dStock }) : null;
+    }).filter(Boolean);
+    return s;
+  }
+  // 添加剂（Arg/咪唑等）的单步平衡体系，pKa 取自母液
+  function systemFromStock(st) {
+    if(st.id==='arg' || st.id==='arg_hcl') return {...DefaultDB.argSystem,id:'ad_'+st.id,steps:DefaultDB.argSystem.steps.map((s,i)=>({...s,pKa:i===1 ? (st.pka ?? s.pKa) : s.pKa}))};
+    return { id: 'ad_' + st.id, name: st.name, steps: [{ pKa: st.pka != null ? st.pka : 9.04, zA: 1, zB: 0 }] };
+  }
+
+  /* ---------- 中和试剂的酸/碱方向 ---------- */
+  // 无 pKa 字段的酸性母液必须映射到它所属的缓冲体系；否则会退化成 systemFromStock 的
+  // 单步碱式假设（默认 pKa 9.04），把加酸算成加碱。
+  const ACID_TITRANT_SYSTEM = { hac: 'acetate', ca: 'citrate', h3po4: 'pb', nah2po4: 'pb' };
+  const ACID_TITRANT_ORDER = ['hac', 'ca', 'h3po4', 'nah2po4'];
+  // 酸性候选 = 显式映射的四种（HAc/CA/H3PO4/NaH2PO4，其中 HAc 与 CA 无 pKa 字段），
+  // 外加母液库中明确带酸性 pKa 的条目。
+  function isAcidTitrantStock(st) {
+    return ACID_TITRANT_SYSTEM[st.id] != null || (st.pka != null && st.pka < 7);
+  }
+  // 酸性试剂：优先按显式映射取所属缓冲对，其次看该母液是否已是某个缓冲体系的酸式一端。
+  function acidTitrantSystemOf(st) {
+    const sysId = ACID_TITRANT_SYSTEM[st.id];
+    if (sysId) {
+      const def = DB.systems.find(s => s.id === sysId);
+      if (def) return hydrate(def);
+    }
+    for (const def of DB.systems) {
+      const one = (def.stocks || []).find(x => x.stockId === st.id && x.dStock === 0);
+      if (one && def.steps) return hydrate(def);
+    }
+    return systemFromStock(st);
+  }
+  function neutralizationTitrantFor(st) {
+    const asAcid = isAcidTitrantStock(st);
+    return {
+      system: asAcid ? acidTitrantSystemOf(st) : systemFromStock(st),
+      concM: st.concM, reagentPH: st.refpH, name: st.name,
+    };
+  }
+  function neutralizationTitrantOptions() {
+    const acids = DB.stocks.filter(isAcidTitrantStock)
+      .sort((a, b) => {
+        const ia = ACID_TITRANT_ORDER.indexOf(a.id), ib = ACID_TITRANT_ORDER.indexOf(b.id);
+        return (ia < 0 ? 99 : ia) - (ib < 0 ? 99 : ib);
+      });
+    // 碱性候选：带 pKa、未被标记 noTitrant、且试剂 pH 不低于 7（咪唑已由 noTitrant 排除）
+    const bases = DB.stocks.filter(s => s.pka != null && !s.noTitrant && !isAcidTitrantStock(s));
+    const opt = s => `<option value="${s.id}">${esc(s.name)}（${s.concM} M，pKa ${s.pka}）</option>`;
+    return (acids.length ? `<optgroup label="酸性试剂（用于降低 pH）">${acids.map(opt).join('')}</optgroup>` : '')
+         + (bases.length ? `<optgroup label="碱性试剂（用于升高 pH）">${bases.map(opt).join('')}</optgroup>` : '');
+  }
+  const uid = () => 'x' + Math.random().toString(36).slice(2, 9);
+
+  /* ---------- 实测 pH 记录（累积后用于阶段性回归校准） ----------
+   * 记录粒度按 D-007：只由「缓冲体系 + 浓度 + 添加剂 + 目标pH」构成的键分组，
+   * 一条记录只代表它自己那个组合。仅存稳定标识，不存会随 UI 变的展示字段。
+   * 数据随既有导出/导入 JSON 一起走，不额外维护第二份持久化。 */
+  function calibKey(buffers, premixes, additives, pH) {
+    const parts = [];
+    for (const b of buffers) parts.push(`s:${b.system.id}@${(b.concM * 1000).toFixed(4)}mM`);
+    for (const px of premixes) parts.push(`p:${px.stock.id}@${px.fold}x`);
+    for (const ad of additives) {
+      if (ad.kind === 'premix') continue;
+      const c = ad.kind === 'neutral' ? `${ad.volL.toFixed(8)}L` : `${(ad.concM * 1000).toFixed(4)}mM`;
+      parts.push(`a:${ad.stock.id}/${ad.kind}@${c}`);
+    }
+    parts.sort();
+    return `${parts.join('|')}#pH${Number(pH).toFixed(2)}`;
+  }
+  function calibAll() {
+    if (!Array.isArray(DB.calibration)) DB.calibration = [];
+    return DB.calibration;
+  }
+  function calibrationFor(key) { return calibAll().filter(x => x.key === key); }
+  function addCalibrationRecord(rec) { calibAll().push(rec); saveDB(); return rec; }
+  function deleteCalibrationRecord(id) {
+    const a = calibAll(), i = a.findIndex(x => x.id === id);
+    if (i >= 0) { a.splice(i, 1); saveDB(); }
+  }
+  function calibrationTSV(rows, withText) {
+    const head = ['记录时间', '目标pH', '实测pH', '偏差(实测-目标)', '温度C', '卡片名称', '模型'];
+    return rows.map((x, i) => {
+      const body = [x.at, x.targetPH, x.measuredPH, (x.measuredPH - x.targetPH).toFixed(3), x.tempC ?? '', x.label, x.model].join('\t');
+      return (i === 0 ? head.join('\t') + '\n' : '') + body + (withText ? '\n' + x.text : '');
+    }).join('\n');
+  }
+  function downloadText(filename, text) {
+    const blob = new Blob([text], { type: 'text/plain;charset=utf-8' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = filename;
+    a.click();
+    URL.revokeObjectURL(a.href);
+  }
+
+  /* ---------- 通用小工具 ---------- */
+  function fmtVol(volL) {
+    if (volL == null) return '—';
+    const mL = volL * 1000;
+    if (mL >= 1000) return (mL / 1000).toFixed(2) + ' L';
+    if (mL >= 1) return mL.toFixed(2) + ' mL';
+    return (mL * 1000).toFixed(1) + ' µL';
+  }
+  // 配方定容水始终使用 mL，避免大体积时换算为 L 后丢失两位小数之外的有效体积信息。
+  function fmtWaterVol(volL) {
+    return volL == null ? '—' : (volL * 1000).toFixed(2) + ' mL';
+  }
+  function esc(s) { return String(s == null ? '' : s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c])); }
+  function num(id) { const v = parseFloat($(id).value); return isNaN(v) ? null : v; }
+
+  /* ---------- 标签页切换 ---------- */
+  $$('nav.tabs button').forEach(b => b.addEventListener('click', () => {
+    $$('nav.tabs button').forEach(x => x.classList.toggle('active', x === b));
+    $$('.tabpage').forEach(p => p.classList.toggle('active', p.id === b.dataset.tab));
+  }));
+
+  /* ============================================================
+   * 通用选择器（配制页与中和页 A/B 共用）
+   * ============================================================ */
+  const ADDITIVE_DEFS = [
+    { key: 'nacl',     label: 'NaCl',         unit: 'mM',    kind: 'salt',     stockId: 'nacl',     def: 150 },
+    { key: 'arghcl',   label: 'Arg-HCl',      unit: 'mM',    kind: 'protSalt', stockId: 'arg_hcl',  def: 0 },
+    { key: 'arg',      label: 'Arg',            unit: 'mM',    kind: 'protBase', stockId: 'arg',      def: 0, note: '默认不参与，特殊需求时启用' },
+    { key: 'gdnhcl',   label: 'GdnHCl 盐酸胍', unit: 'mM',   kind: 'salt',     stockId: 'gdnhcl',   def: 0 },
+    { key: 'imidazole',label: '咪唑',         unit: 'mM',    kind: 'protBase', stockId: 'imidazole',def: 0 },
+    { key: 'suc',      label: '蔗糖',         unit: '% w/v', kind: 'neutral',  stockId: 'suc',      def: 0 },
+  ];
+
+  function renderSysPicker(box, prefix) {
+    box.innerHTML = '';
+    DB.systems.filter(s => s.enabled).forEach(s => {
+      const isPm = !!s.premix;
+      const meta = isPm
+        ? '预混母液（PB + NaCl + KCl），按倍数使用'
+        : s.steps.map(x => 'pKa ' + x.pKa).join(' / ') + (s.range ? ` · 建议 ${s.range[0]}–${s.range[1]}` : '');
+      const unit = isPm ? '×' : 'mM';
+      const div = document.createElement('div');
+      div.className = 'sysrow';
+      div.innerHTML = `<label><input type="checkbox" class="${prefix}SysChk" data-id="${s.id}"> <b>${esc(s.name)}</b></label>
+        <span class="nm muted">${esc(meta)}</span>
+        <input type="number" class="${prefix}SysConc" data-id="${s.id}" min="0" step="${isPm ? '0.1' : '1'}" placeholder="浓度" disabled>
+        <span class="muted">${unit}</span>`;
+      box.appendChild(div);
+    });
+    box.querySelectorAll(`.${prefix}SysChk`).forEach(chk => chk.addEventListener('change', () => {
+      const def = DB.systems.find(s => s.id === chk.dataset.id);
+      const inp = box.querySelector(`.${prefix}SysConc[data-id="${chk.dataset.id}"]`);
+      inp.disabled = !chk.checked;
+      if (chk.checked && !inp.value) inp.value = def && def.premix ? 1 : 20;
+    }));
+  }
+
+  function renderAddPicker(box, prefix, excludeNeutral) {
+    box.innerHTML = '';
+    ADDITIVE_DEFS.forEach(a => {
+      if (excludeNeutral && a.kind === 'neutral') return;
+      const st = stockById(a.stockId);
+      if (!st) return;
+      const concLabel = st.concM != null ? st.concM + ' M' : st.pct + '%';
+      const div = document.createElement('div');
+      div.className = 'sysrow';
+      div.innerHTML = `<label><input type="checkbox" class="${prefix}AddChk" data-key="${a.key}"> ${esc(a.label)}</label>
+        <span class="nm muted">母液 ${concLabel}${a.note ? ' · ' + esc(a.note) : ''}</span>
+        <input type="number" class="${prefix}AddConc" data-key="${a.key}" min="0" step="1" disabled>
+        <span class="muted">${a.unit}</span>`;
+      box.appendChild(div);
+    });
+    box.querySelectorAll(`.${prefix}AddChk`).forEach(chk => chk.addEventListener('change', () => {
+      const inp = box.querySelector(`.${prefix}AddConc[data-key="${chk.dataset.key}"]`);
+      inp.disabled = !chk.checked;
+      if (chk.checked && !inp.value) {
+        const def = ADDITIVE_DEFS.find(x => x.key === chk.dataset.key).def;
+        inp.value = def || 10;
+      }
+    }));
+  }
+
+  // 收集勾选的缓冲体系；返回 {buffers:[{system,concM}], premixes:[{pm,sysDef,fold}]}
+  function collectSystems(prefix) {
+    const buffers = [], premixes = [];
+    $$(`.${prefix}SysChk`).forEach(chk => {
+      if (!chk.checked) return;
+      const v = parseFloat($(`.${prefix}SysConc[data-id="${chk.dataset.id}"]`).value);
+      if (!(v > 0)) throw new Error('请为勾选的缓冲体系填写浓度/倍数');
+      const def = DB.systems.find(s => s.id === chk.dataset.id);
+      if (def.premix) {
+        const st = stockById(def.stockId);
+        const sysDef = DB.systems.find(s => s.id === st.premix.sysId);
+        if (!sysDef) throw new Error('预混母液引用的缓冲体系不存在');
+        premixes.push({ pm: st.premix, sysDef, stock: st, fold: v });
+      } else {
+        buffers.push({ system: hydrate(def), concM: v / 1000 });
+      }
+    });
+    return { buffers, premixes };
+  }
+
+  // 收集勾选的添加剂 → 引擎 additive 数组（V_L = 目标体积 L；中和页传 null 表示不展开体积相关项）
+  function collectAdditives(prefix, V_L) {
+    const additives = [];
+    $$(`.${prefix}AddChk`).forEach(chk => {
+      if (!chk.checked) return;
+      const key = chk.dataset.key;
+      const v = parseFloat($(`.${prefix}AddConc[data-key="${key}"]`).value);
+      if (!(v > 0)) throw new Error('请为勾选的添加剂填写浓度');
+      const def = ADDITIVE_DEFS.find(x => x.key === key);
+      const st = stockById(def.stockId);
+      if (def.kind === 'neutral') {
+        if (V_L != null) additives.push({ kind: 'neutral', stock: st, volL: V_L * (v / st.pct) });
+      } else if (def.kind === 'salt') {
+        additives.push({ kind: 'salt', concM: v / 1000, stock: st, zCat: 1, zAn: -1 });
+      } else {
+        additives.push({ kind: def.kind, concM: v / 1000, stock: st, system: systemFromStock(st) });
+      }
+    });
+    return additives;
+  }
+
+  function currentModel() {
+    const r = document.querySelector('input[name=model]:checked');
+    return r ? r.value : 'edh';
+  }
+
+  /* ============================================================
+   * 标签页①：缓冲液配制（A/B 两组配方，B 组不勾体系则只算 A）
+   * ============================================================ */
+  const lastCopy = { A: '', B: '' };
+  const lastName = { A: '', B: '' };
+
+  function recipeName(buffers, premixes, additives, pH, volumeL) {
+    const fmt = n => String(Number(n.toFixed(6)));
+    const parts = buffers.map(b => `${fmt(b.concM * 1000)}mM ${b.system.name}`);
+    // Preserve the actual concentration units for premixes and mass-percent additives.
+    for (const px of premixes) parts.push(`${fmt(px.fold)}× ${px.stock.id === 'pbs10x' ? 'PBS' : px.stock.name}`);
+    for (const ad of additives) {
+      if (ad.kind === 'premix') continue;
+      if (ad.kind === 'neutral') {
+        const label = ADDITIVE_DEFS.find(d => d.stockId === ad.stock.id)?.label || ad.stock.name;
+        parts.push(`${fmt(ad.stock.pct * ad.volL / volumeL)}% ${label}`);
+      } else parts.push(`${fmt(ad.concM * 1000)}mM ${ad.stock.name}`);
+    }
+    // Keep at least one decimal without changing a more precise target such as 7.45.
+    const phText = Number.isInteger(pH) ? pH.toFixed(1) : String(pH);
+    return parts.concat(`pH${phText}`).join(', ');
+  }
+
+  // 计算单侧配方，返回 {html, copyText}
+  function computeOne(prefix, pHId, volId, label) {
+    const { buffers, premixes } = collectSystems(prefix);
+    const pH = num(pHId), volML = num(volId);
+    if (!buffers.length && !premixes.length) throw new Error(label + '：请至少勾选一个缓冲体系');
+    if (pH == null || pH < 0 || pH > 14) throw new Error(label + '：目标 pH 无效');
+    if (volML == null || volML <= 0) throw new Error(label + '：目标体积无效');
+    const V_L = volML / 1000;
+
+    const additives = collectAdditives(prefix, V_L);
+    for (const px of premixes) {
+      additives.push({ kind: 'premix', stock: px.stock, volL: V_L * px.fold / 10,
+        system: hydrate(px.sysDef), concM: px.pm.concM, dbarStock: px.pm.dbar, saltIons: px.pm.saltIons });
+    }
+
+    const allowTitrant = $('#allowTitrant').checked;
+    const r = Engine.calcRecipe({
+      buffers, targetPH: pH, targetVolL: V_L, additives, model: currentModel(), empirical: $('#empiricalRecipe').checked,
+      titrantConcM: { NaOH: num('#naohConc') || 1, HCl: num('#hclConc') || 1 },
+    });
+
+    // 渲染
+    const totalConc = buffers.reduce((s, b) => s + b.concM, 0) * 1000
+      + premixes.reduce((s, px) => s + px.pm.concM * px.fold / 10 * 1000, 0);
+    const side = label.slice(-1); // 'A' / 'B'
+    const nameText = recipeName(buffers, premixes, additives, pH, V_L);
+    let html = `<div class="card rcard"><div class="rcard-hd"><h3>${label} · 配方结果</h3><span class="nm" data-buffer-name="${side}">${esc(nameText)}</span><span class="hd-act noprint"><button class="ghost small" data-copy="${side}">复制配方</button><button class="ghost small" data-copy_name="${side}">复制名称</button></span></div>`
+      + `<div class="sec-t">母液吸取体积</div><table class="res"><tr><th>母液 / 试剂</th><th>吸取体积</th><th>备注</th></tr>`;
+    const titrantLines = r.lines.filter(l => l.kind === 'titrant');
+    // 输出顺序：缓冲对母液 → 预混缓冲液（PBS）→ 添加剂 → （虚拟滴定剂）→ 水
+    const kindOrder = { stock: 0, premix: 1, additive: 2 };
+    const normalLines = r.lines.filter(l => l.kind !== 'titrant')
+      .sort((a, b) => (kindOrder[a.kind] != null ? kindOrder[a.kind] : 3) - (kindOrder[b.kind] != null ? kindOrder[b.kind] : 3));
+    normalLines.forEach(l => {
+      html += `<tr><td>${esc(l.name)}</td><td class="num">${fmtVol(l.volL)}</td><td class="muted">${esc(l.note || '')}</td></tr>`;
+    });
+    let titrantBlocked = false;
+    if (titrantLines.length) {
+      if (allowTitrant) {
+        titrantLines.forEach(l => {
+          html += `<tr><td>${esc(l.name)}</td><td class="num">${fmtVol(l.volL)}</td><td class="muted">${esc(l.note || '')}</td></tr>`;
+        });
+      } else {
+        titrantBlocked = true;
+      }
+    }
+    // Engine always computes the amount needed to hit target pH. When the user disables
+    // acid/base adjustment, omit that physical volume everywhere and return it to water.
+    const omittedTitrantVol = titrantBlocked ? titrantLines.reduce((s, l) => s + l.volL, 0) : 0;
+    const shownWaterL = r.waterL + omittedTitrantVol;
+    html += `<tr class="water"><td>超纯水（预计补加）</td><td class="num">${fmtWaterVol(shownWaterL)}</td><td class="muted">预计值；最后以容量刻度定容至 ${volML.toFixed(1)} mL</td></tr></table>`;
+
+    const pHCheckText = titrantBlocked ? '不可达（需酸碱调节）' : (r.checkPH != null ? r.checkPH.toFixed(2) : '—');
+    const reach = r.reachability;
+    const reachText = titrantBlocked
+      ? '当前条件可达到的 pH：需勾选「允许使用 NaOH/HCl」后由模型给出'
+      : (reach == null || reach.achieved == null
+          ? '当前条件可达到的 pH：无法反算'
+          : (reach.feasible
+              ? `当前条件可达到的 pH：<b>${reach.achieved.toFixed(2)}</b>（命中目标）`
+              : `当前条件<b>无法命中</b>目标 pH ${reach.target.toFixed(2)}；可达到的 pH 为 <b>${reach.achieved.toFixed(2)}</b>（相差 ${reach.deviation >= 0 ? '+' : ''}${reach.deviation.toFixed(2)}）`));
+    const ionicText = titrantBlocked ? '—' : `${(r.ionicStrength * 1000).toFixed(1)} mM`;
+    const conductivityText = titrantBlocked ? '—' : (r.conductivity != null ? r.conductivity.toFixed(1) + ' mS/cm' : '—');
+    const betaText = titrantBlocked ? '—' : `${(r.beta * 1000).toFixed(1)} mmol/L/pH`;
+    html += `<div class="sec-t">校验信息</div><div class="statgrid">
+      <span class="stat">理论 pH 复核：<b>${pHCheckText}</b></span>
+      <span class="stat">总缓冲浓度：<b>${totalConc.toFixed(1)} mM</b></span>
+      <span class="stat">离子强度：<b>${ionicText}</b></span>
+      <span class="stat">估算电导率：<b>${conductivityText}</b></span>
+      <span class="stat">缓冲容量 β：<b>${betaText}</b></span>
+      <span class="stat">模型：<b>${currentModel() === 'edh' ? '扩展 Debye-Hückel' : 'Davies'}</b></span>
+      </div>
+      <div class="stat reachline" style="margin-top:6px">${reachText}</div>
+      <div class="muted" style="margin-top:6px">缓冲容量 β：使 1 L 溶液的 pH 改变 1 个单位所需强酸/强碱的量（mmol），数值越高抗 pH 波动能力越强。电导率使用有限浓度估计及有条件的经验总值；参考常数约25°C，经验测量温度未确认。高盐、混合盐和不同缓冲背景需实测确认。</div>`;
+
+    const warns = r.warnings.slice();
+    if (titrantBlocked) {
+      warns.unshift(`该配方必须借助酸碱滴定才能命中 pH ${pH}（涉及：${titrantLines.map(l => l.name.replace(/（.*$/, '')).join('、')}）。当前未计入、未复制这些酸碱体积，补水量按实际不加入酸碱计算；如需得到目标pH，请勾选「允许使用 NaOH/HCl」后重新计算。`);
+    }
+    if (shownWaterL < 0) warns.push('母液总体积超过目标体积，无法配制！');
+    if (warns.length) {
+      html += '<div class="warnbox" style="margin-top:8px">' + warns.map(w => '⚠ ' + esc(w)).join('<br>') + '</div>';
+    }
+    // 配方文本先行构造：记录窗口的文本框与「复制配方」必须逐字一致。
+    const lines = [`${label}（目标 pH ${pH}，定容 ${volML} mL，模型：${currentModel()}）`];
+    normalLines.forEach(l => lines.push(`${l.name}: ${fmtVol(l.volL)}`));
+    if (allowTitrant) titrantLines.forEach(l => lines.push(`${l.name}: ${fmtVol(l.volL)}`));
+    lines.push(`超纯水（预计补加）: ${fmtWaterVol(shownWaterL)}（最后以容量刻度定容至 ${volML} mL）`);
+    if (titrantBlocked) lines.push(`未加入所需的${titrantLines.map(l => l.name.replace(/（.*$/, '')).join('、')}，当前配方不能达到目标 pH ${pH}`);
+    else lines.push(`复核 pH ${r.checkPH != null ? r.checkPH.toFixed(2) : '—'}，离子强度 ${r.ionicStrength.toFixed(3)} M`);
+    const copyText = lines.join('\n');
+
+    const recKey = calibKey(buffers, premixes, additives, pH);
+    const recHistory = calibrationFor(recKey);
+    const devTxt = recHistory.length
+      ? `<div class="muted" style="margin-top:4px">已记录 <b>${recHistory.length}</b> 条；最近 3 条偏差（实测 − 目标）：${recHistory.slice(-3).map(x => (x.measuredPH - pH >= 0 ? '+' : '') + (x.measuredPH - pH).toFixed(2)).join('、')} pH</div>`
+      : '<div class="muted" style="margin-top:4px">尚无实测记录。每次配完把实测 pH 记下来，累积后用于阶段性回归校准。</div>';
+    html += `<div class="sec-t noprint">实测 pH 记录</div>
+      <div class="calib-body noprint" data-calib-card="${side}" data-calib-key="${esc(recKey)}" data-calib-target="${pH}">
+      <div class="muted">下方文本与「复制配方」逐字一致（可直接复制给同事）。配完后在末尾补一行填写实测 pH 即可存档。</div>
+      <textarea class="calib-recipe" data-calib-text="${side}" spellcheck="false">${esc(copyText)}</textarea>
+      <div class="row" style="margin-top:8px">
+        <label>实测 pH</label><input type="number" data-calib-ph="${side}" min="0" max="14" step="0.001" placeholder="如 7.32" style="width:90px">
+        <label>温度(°C，可留空)</label><input type="number" data-calib-temp="${side}" min="0" max="60" step="0.5" placeholder="25" style="width:80px">
+        <button class="primary" data-calib-save="${side}">记录实测值</button>
+        <button class="ghost" data-calib-export="${side}">导出本卡片记录</button>
+      </div>
+      ${devTxt}
+      <div data-calib-history="${side}"></div>
+    </div></div>`;
+    return { html, copyText, nameText };
+  }
+
+  let recipeStarted = false;
+  function computeRecipe() {
+    recipeStarted = true;
+    const zone = $('#resultZone');
+    lastCopy.A = ''; lastCopy.B = '';
+    lastName.A = ''; lastName.B = '';
+    try {
+      const a = computeOne('t1A', '#pHA', '#volA', 'Buffer A');
+      lastCopy.A = a.copyText;
+      lastName.A = a.nameText;
+      const parts = [a.html];
+      // B 组：勾选了任意体系才计算，否则只出 A
+      if ($$('.t1BSysChk').some(c => c.checked)) {
+        const b = computeOne('t1B', '#pHB', '#volB', 'Buffer B');
+        lastCopy.B = b.copyText;
+        lastName.B = b.nameText;
+        parts.push(b.html);
+      }
+      zone.innerHTML = parts.length > 1 ? `<div class="result-grid two">${parts.join('')}</div>` : parts.join('');
+      renderCalibHistories();
+    } catch (e) {
+      zone.innerHTML = `<div class="errbox">✕ ${esc(e.message)}</div>`;
+    }
+  }
+
+  /* ============================================================
+   * 标签页②：洗脱中和
+   * ============================================================ */
+  const VOL_MIN = 0.5, VOL_MAX = 10000;
+  const volFromSlider = t => Math.pow(10, Math.log10(VOL_MIN) + (t / 1000) * (Math.log10(VOL_MAX) - Math.log10(VOL_MIN)));
+  const sliderFromVol = v => 1000 * (Math.log10(v) - Math.log10(VOL_MIN)) / (Math.log10(VOL_MAX) - Math.log10(VOL_MIN));
+  function roundSig(v, sig) {
+    if (v <= 0) return 0;
+    const d = Math.pow(10, Math.floor(Math.log10(v)) - (sig - 1));
+    return Math.round(v / d) * d;
+  }
+  function bindSlider(sliderSel, numSel, opts) {
+    const sl = $(sliderSel), nm = $(numSel);
+    sl.addEventListener('input', () => {
+      let v = parseFloat(sl.value);
+      if (opts.log) v = roundSig(volFromSlider(v), 3);
+      nm.value = opts.log ? v : parseFloat(v.toFixed(opts.dec != null ? opts.dec : 2));
+    });
+    nm.addEventListener('input', () => {
+      let v = parseFloat(nm.value);
+      if (isNaN(v)) return;
+      v = Math.min(opts.max, Math.max(opts.min, v));
+      sl.value = opts.log ? sliderFromVol(v) : v;
+    });
+  }
+
+  function renderNeutSelectors() {
+    renderSysPicker($('#nSysPickA'), 'nA');
+    renderSysPicker($('#nSysPickB'), 'nB');
+    renderAddPicker($('#nAddPickA'), 'nA', true);
+    renderAddPicker($('#nAddPickB'), 'nB', true);
+    // 中和试剂：酸/碱两组。酸性候选含无 pKa 字段的 HAc/CA/H3PO4/NaH2PO4，
+    // 通过 ACID_TITRANT_SYSTEM 映射到所属缓冲对。
+    $('#nTitrant').innerHTML = neutralizationTitrantOptions();
+    const arg = DB.stocks.find(s => s.id === 'arg' && s.pka != null);
+    if (arg) $('#nTitrant').value = 'arg';
+  }
+
+  // 收集中和页一侧（A 或 B）的组成：{components:[{system,concM}], pH, saltI}
+  function collectSide(prefix) {
+    const { buffers, premixes } = collectSystems(prefix);
+    const components = buffers.map(b => ({ system: b.system, concM: b.concM }));
+    let saltI = 0;
+    for (const px of premixes) {
+      const f = px.fold / 10;
+      components.push({ system: hydrate(px.sysDef), concM: px.pm.concM * f });
+      // Only neutral salt pairs here; phosphate counterions are inferred by the engine.
+      const cat=px.pm.saltIons.reduce((s,i)=>s+Math.max(0,i.z)*i.concM,0);
+      const an=px.pm.saltIons.reduce((s,i)=>s+Math.max(0,-i.z)*i.concM,0);
+      saltI += Math.min(cat,an) * f;
+    }
+    for (const ad of collectAdditives(prefix, null)) {
+      if (ad.kind === 'salt') saltI += ad.concM;
+      else if (ad.kind === 'protSalt' || ad.kind === 'protBase') components.push({ system: ad.system, concM: ad.concM });
+    }
+    const pH = num(prefix === 'nA' ? '#nPHA' : '#nPHB');
+    if (pH == null) throw new Error('请填写 Buffer ' + (prefix === 'nA' ? 'A' : 'B') + ' 的 pH');
+    if (!components.length) throw new Error('请为 Buffer ' + (prefix === 'nA' ? 'A' : 'B') + ' 至少勾选一个缓冲体系或质子性添加剂');
+    return { components, pH, saltI };
+  }
+
+  // 解析中和试剂：现有母液 或 自定义（缓冲对 + 浓度 + 试剂 pH）
+  function resolveTitrant() {
+    const src = (document.querySelector('input[name=titrantSrc]:checked') || {}).value || 'stock';
+    if (src === 'custom') {
+      const sid = $('#nCtSys').value;
+      const sysDef = sid === 'arg_sys' ? DefaultDB.argSystem : DB.systems.find(s => s.id === sid);
+      if (!sysDef) throw new Error('自定义试剂的缓冲对不存在');
+      const c = num('#nCtConc'), p = num('#nCtPH');
+      if (!(c > 0)) throw new Error('自定义试剂浓度无效');
+      if (p == null || p < 0 || p > 14) throw new Error('自定义试剂 pH 无效');
+      const label = `${sysDef.name}（自定义 ${c} M，pH ${p}）`;
+      return { titrant: { system: { id: 'ct_' + sid, name: sysDef.name, steps: sysDef.steps }, concM: c, reagentPH: p, name: label }, label };
+    }
+    const tStock = stockById($('#nTitrant').value);
+    if (!tStock) throw new Error('请选择中和试剂');
+    if (tStock.pka == null && !ACID_TITRANT_SYSTEM[tStock.id]) {
+      throw new Error(`「${tStock.name}」缺少 pKa 且不在支持的酸性试剂列表内，无法作为中和试剂`);
+    }
+    const neutralization = neutralizationTitrantFor(tStock);
+    return { titrant: neutralization, label: tStock.name };
+  }
+
+  let neutRun=0,neutStarted=false;
+  function setNeutBusy(on){
+    const b=$('#btnNeut'); if(!b)return;
+    if(on){ b.dataset.origText=b.textContent; b.disabled=true; b.textContent='计算中…'; }
+    else { b.disabled=false; if(b.dataset.origText)b.textContent=b.dataset.origText; }
+  }
+  async function computeNeutralization() {
+    const run=++neutRun; neutStarted=true;
+    setNeutBusy(true);
+    const pane = $('#neutZone');
+    try {
+      const bufA = collectSide('nA');
+      const bufB = collectSide('nB');
+      const lower=num('#numFracBLo'),upper=num('#numFracB');
+      if(lower==null || upper==null || lower<0 || upper>100 || lower>upper) throw new Error('Buffer B范围需满足0 ≤ 下限 ≤ 上限 ≤ 100');
+      const fracB=(lower+upper)/200;
+      const pHt = num('#numPH'), volML = num('#numVol');
+      if (pHt == null || pHt<0 || pHt>14) throw new Error('目标 pH 无效');
+      if (!(volML > 0)) throw new Error('样品体积无效');
+      const { titrant, label: tName } = resolveTitrant();
+      const tReagentPH = titrant.reagentPH;
+      const mdl = (document.querySelector('input[name=model2]:checked') || {}).value || 'edh';
+
+      const tol=num('#nTol');
+      if(tol==null || tol<0 || pHt-tol<0 || pHt+tol>14) throw new Error('pH容差无效');
+      const input={bufA,bufB,fracB,targetPH:pHt,sampleVolL:volML/1000,titrant,model:mdl,tolerancePH:tol};
+      pane.innerHTML='<div class="card" role="status">正在计算所选B%范围…</div>';
+      await new Promise(requestAnimationFrame);
+      const points=[],steps=lower===upper?0:Math.ceil((upper-lower)/.5);
+      for(let j=0;j<=steps;j++) {
+        if(run!==neutRun)return;
+        const b=steps?lower+(upper-lower)*j/steps:lower;
+        points.push({b,r:Engine.calcNeutralization({...input,fracB:b/100})});
+        if(j%8===0)await new Promise(requestAnimationFrame);
+      }
+      if(run!==neutRun)return;
+      const r=Engine.calcNeutralization(input);
+      const dirText = r.direction === 'acid' ? '加酸' : (r.direction === 'base' ? '加碱' : '方向未定');
+      const dirNote = r.direction ? `<span class="stat">滴定方向：<b>${dirText}</b></span>` : '';
+      const unreachable = r.reachable
+        ? `<div class="errbox">目标 pH <b>${pHt}</b> 用 <b>${esc(tName)}</b> 无法达到：当前条件可达到的 pH 为 <b>${r.reachable.nearest.toFixed(2)}</b>。可达范围 ${r.reachable.lo.toFixed(2)}–${r.reachable.hi.toFixed(2)}（混合后 pH ${r.mixPH.toFixed(2)}${tReagentPH != null ? `，试剂自身 pH ${Number(tReagentPH).toFixed(2)}` : ''}）。${r.reachable.reason === 'wrongDirection' ? '该目标需要相反方向的试剂。' : '该目标超出试剂可达极限。'}</div>`
+        : '';
+      const good=points.filter(p=>Number.isFinite(p.r.volL.mid)&&p.r.volL.mid>=0);
+      let html='<div class="card"><h3>所选B%范围 · 中和试剂用量</h3>';
+      html += dirNote ? `<div style="margin-bottom:6px">${dirNote}</div>` : '';
+      html += unreachable;
+      if(good.length) {
+        const min=good.reduce((a,b)=>a.r.volL.mid<b.r.volL.mid?a:b),max=good.reduce((a,b)=>a.r.volL.mid>b.r.volL.mid?a:b);
+        html+=`<div class="big-result" id="neutRangeResult">${esc(tName)}：${fmtVol(min.r.volL.mid)} – ${fmtVol(max.r.volL.mid)}</div>
+        <div>Buffer B <b>${lower}%–${upper}%</b> · 样品 ${volML} mL · 目标pH ${pHt}</div>
+        <div class="muted">最小值位于B ${min.b.toFixed(2)}%；最大值位于B ${max.b.toFixed(2)}%。按≤0.5个百分点采样估计极值，共${points.length}点；不是pH容差范围。</div>`;
+      } else html+='<div class="errbox">所选范围内没有可用的加碱中和剂量：可能需加酸、试剂能力不足或模型未收敛。</div>';
+      if(good.length<points.length)html+=`<div class="warnbox">${points.length-good.length}/${points.length}个采样点无法用当前试剂达到目标；曲线留空，体积范围仅统计可行点。</div>`;
+      html+='</div><div class="neut-detail-row"><div class="card"><h3>中和滴定 pH 热力图</h3><div id="neutPlot"></div><div class="muted">颜色越深表示预计pH越高；橙线为目标pH剂量，虚线为目标pH±容差。十字光标可在图内自由取点；预计pH是模型值，实际操作需实测确认。</div></div>';
+      html += `<div class="card"><h3>区间中点 B ${((lower+upper)/2).toFixed(2)}% · 过程信息</h3><div class="statgrid">
+        <span class="stat">中和前 pH：<b>${r.mixPH.toFixed(2)}</b></span>
+        ${r.conductivityBefore != null ? `<span class="stat">中和前估算电导率：<b>${r.conductivityBefore.toFixed(1)} mS/cm</b></span>` : ''}
+        <span class="stat">净质子需求：<b>${(r.needMol.mid * 1000).toFixed(3)} mmol</b></span>
+        <span class="stat">试剂有效中和比例：<b>${(r.effFrac.mid * 100).toFixed(1)}%</b></span>
+        ${Number.isFinite(r.titrantCapacityM?.mid) ? `<span class="stat">试剂有效当量浓度：<b>${r.titrantCapacityM.mid.toFixed(3)} mol H⁺/L</b></span>` : ''}
+        <span class="stat">估算离子强度：<b>${(r.ionicStrength * 1000).toFixed(1)} mM</b></span>
+        ${r.conductivity != null ? `<span class="stat">中和后估算电导率：<b>${r.conductivity.toFixed(1)} mS/cm</b></span>` : ''}
+        ${r.checkPH != null ? `<span class="stat">中和后 pH 复核：<b>${r.checkPH.toFixed(2)}</b>（目标 ${pHt}）</span>` : ''}
+        ${r.finalVolL ? `<span class="stat">加试剂后总体积：<b>${fmtVol(r.finalVolL)}</b>（稀释 ${(r.finalVolL / (volML / 1000)).toFixed(2)}×）</span>` : ''}
+        </div>
+        ${r.conductivity != null ? '<div class="muted" style="margin-top:6px">「中和后 pH 复核」为按推荐用量加试剂后、由质子守恒反算的平衡 pH，应与目标 pH 一致。电导率使用有限浓度工程估计；混合盐及温度影响尚未校准。</div>' : ''}
+        </div>`;
+      html += '</div>';
+      if (r.warnings.length) html += '<div class="warnbox">' + r.warnings.map(w => '⚠ ' + esc(w)).join('<br>') + '</div>';
+      pane.innerHTML = html;
+      NeutralChart.render($('#neutPlot'),points,{...input,__dir:r.direction},lower,upper);
+    } catch (e) {
+      if(run!==neutRun)return;
+      pane.innerHTML = `<div class="errbox">✕ ${esc(e.message)}</div>`;
+    } finally {
+      if(run===neutRun)setNeutBusy(false);
+    }
+  }
+
+  /* ============================================================
+   * 标签页③：管理
+   * ============================================================ */
+  const TYPE_NAMES = { acid: '酸式', base: '碱式', salt: '盐', neutral: '非离子', titrant: '中和试剂', premix: '预混液' };
+
+  function renderStockTable() {
+    const t = $('#stockTable');
+    let html = '<tr><th>名称</th><th>浓度</th><th>类型</th><th>pKa</th><th>参考pH</th><th>Na⁺</th><th>Cl⁻</th><th></th></tr>';
+    DB.stocks.forEach(s => {
+      html += `<tr><td><b>${esc(s.name)}</b></td>
+        <td>${s.concM != null ? s.concM + ' M' : (s.pct != null ? s.pct + '% w/v' : (s.premix ? '预混配方' : '—'))}</td>
+        <td>${TYPE_NAMES[s.type] || esc(s.type)}</td>
+        <td>${s.pka != null ? s.pka : '—'}</td>
+        <td>${s.refpH != null ? s.refpH : '—'}</td>
+        <td>${s.na || 0}</td><td>${s.cl || 0}</td>
+        <td class="noprint"><button class="ghost small" data-edit-stock="${s.id}">编辑</button>
+        <button class="ghost small danger" data-del-stock="${s.id}">删除</button></td></tr>`;
+    });
+    t.innerHTML = html;
+  }
+
+  function renderSysTable() {
+    const t = $('#sysTable');
+    let html = '<tr><th>启用</th><th>名称</th><th>pKa</th><th>母液（d 值）</th><th>建议范围</th><th></th></tr>';
+    DB.systems.forEach(s => {
+      const isPm = !!s.premix;
+      const pkaCell = isPm ? '<span class="muted">预混</span>' : s.steps.map(x => `${x.pKa}(${x.zA}→${x.zB})`).join(', ');
+      const stockCell = isPm
+        ? esc((stockById(s.stockId) || {}).name || s.stockId)
+        : ((s.stocks || []).map(x => { const st = stockById(x.stockId); return st ? esc(st.name) + '(d=' + x.dStock + ')' : '?'; }).join('、') || '—');
+      html += `<tr><td><input type="checkbox" data-toggle-sys="${s.id}" ${s.enabled ? 'checked' : ''}></td>
+        <td><b>${esc(s.name)}</b></td>
+        <td>${pkaCell}</td>
+        <td>${stockCell}</td>
+        <td class="muted">${s.range ? s.range[0] + '–' + s.range[1] : '—'}${s.range2 ? '；' + s.range2[0] + '–' + s.range2[1] : ''}</td>
+        <td class="noprint">${isPm ? '' : `<button class="ghost small" data-edit-sys="${s.id}">编辑</button>`}
+        <button class="ghost small danger" data-del-sys="${s.id}">删除</button></td></tr>`;
+    });
+    t.innerHTML = html;
+    t.querySelectorAll('[data-toggle-sys]').forEach(chk => chk.addEventListener('change', () => {
+      const s = DB.systems.find(x => x.id === chk.dataset.toggleSys);
+      if (s) { s.enabled = chk.checked; saveDB(); refreshAll(); }
+    }));
+  }
+
+  /* ---------- 模态框 ---------- */
+  function openModal(html) { $('#modalBox').innerHTML = html; $('#overlay').classList.add('show'); }
+  function closeModal() { $('#overlay').classList.remove('show'); $('#modalBox').innerHTML = ''; }
+  $('#overlay').addEventListener('click', e => { if (e.target.id === 'overlay') closeModal(); });
+
+  function stockForm(s) {
+    const isNew = !s;
+    s = s || { id: uid(), name: '', concM: 0.2, refpH: null, na: 0, cl: 0, type: 'base', pka: null, pct: null };
+    openModal(`<h3>${isNew ? '新增' : '编辑'}母液</h3>
+      <div class="row"><label>名称</label><input type="text" id="f_name" class="wide" value="${esc(s.name)}"></div>
+      <div class="row"><label>类型</label><select id="f_type">${Object.keys(TYPE_NAMES).map(k => `<option value="${k}" ${s.type === k ? 'selected' : ''}>${TYPE_NAMES[k]}</option>`).join('')}</select>
+      <span class="muted">非离子类（蔗糖）请用下方 % 字段；预混液为特殊类型，组成改动请联系维护</span></div>
+      <div class="row"><label>浓度 (M)</label><input type="number" id="f_conc" step="any" value="${s.concM != null ? s.concM : ''}">
+      <label>或 % w/v</label><input type="number" id="f_pct" step="any" value="${s.pct != null ? s.pct : ''}" style="width:70px"></div>
+      <div class="row"><label>参考 pH</label><input type="number" id="f_refpH" step="0.01" value="${s.refpH != null ? s.refpH : ''}">
+      <label>pKa（作中和试剂/质子性添加剂时必填）</label><input type="number" id="f_pka" step="0.01" value="${s.pka != null ? s.pka : ''}" style="width:70px"></div>
+      <div class="row"><label>Na⁺ 数/分子</label><input type="number" id="f_na" step="1" min="0" value="${s.na || 0}" style="width:60px">
+      <label>Cl⁻ 数/分子</label><input type="number" id="f_cl" step="1" min="0" value="${s.cl || 0}" style="width:60px"></div>
+      <div class="row" style="margin-top:12px"><button class="primary" id="f_save">保存</button>
+      <button class="ghost" id="f_cancel">取消</button></div>`);
+    $('#f_cancel').addEventListener('click', closeModal);
+    $('#f_save').addEventListener('click', () => {
+      const name = $('#f_name').value.trim();
+      if (!name) { alert('请填写名称'); return; }
+      const conc = parseFloat($('#f_conc').value), pct = parseFloat($('#f_pct').value);
+      s.name = name;
+      s.type = $('#f_type').value;
+      s.concM = isNaN(conc) ? null : conc;
+      s.pct = isNaN(pct) ? null : pct;
+      s.refpH = parseFloat($('#f_refpH').value); if (isNaN(s.refpH)) s.refpH = null;
+      s.pka = parseFloat($('#f_pka').value); if (isNaN(s.pka)) s.pka = null;
+      s.na = parseInt($('#f_na').value) || 0;
+      s.cl = parseInt($('#f_cl').value) || 0;
+      if (isNew) DB.stocks.push(s);
+      saveDB(); closeModal(); refreshAll();
+    });
+  }
+
+  function sysForm(s) {
+    const isNew = !s;
+    if (s) s = JSON.parse(JSON.stringify(s)); // 独立草稿，取消不会修改数据库
+    s = s || { id: uid(), name: '', enabled: true, range: [3, 10], steps: [{ pKa: 7.0, zA: 0, zB: -1 }], stocks: [] };
+    const stockOpts = sel => DB.stocks.map(st => `<option value="${st.id}" ${st.id === sel ? 'selected' : ''}>${esc(st.name)}</option>`).join('');
+    openModal(`<h3>${isNew ? '新增' : '编辑'}缓冲体系</h3>
+      <div class="row"><label>名称</label><input type="text" id="g_name" class="wide" value="${esc(s.name)}"></div>
+      <div class="row"><label>建议 pH 范围</label><input type="number" id="g_r0" step="0.1" value="${s.range ? s.range[0] : ''}" style="width:70px"> –
+        <input type="number" id="g_r1" step="0.1" value="${s.range ? s.range[1] : ''}" style="width:70px">
+        <span class="muted">第二段（可选，如甘氨酸高 pH 段）</span>
+        <input type="number" id="g_r20" step="0.1" value="${s.range2 ? s.range2[0] : ''}" style="width:70px"> –
+        <input type="number" id="g_r21" step="0.1" value="${s.range2 ? s.range2[1] : ''}" style="width:70px"></div>
+      <h4>解离步骤（pKa，酸式电荷 → 碱式电荷）</h4>
+      <div id="g_steps"></div>
+      <button class="ghost small" id="g_addstep">+ 加一级 pKa</button>
+      <h4 style="margin-top:14px">母液与 d 值（d = 该母液形态相对全质子化形态已解离的质子数）</h4>
+      <div class="muted" style="margin-bottom:6px">例：PB 体系 H3PO4 d=0、NaH2PO4 d=1、Na2HPO4 d=2；Tris-HCl d=0、Tris d=1</div>
+      <div id="g_stocks"></div>
+      <button class="ghost small" id="g_addstock">+ 加母液</button>
+      <div class="row" style="margin-top:14px"><button class="primary" id="g_save">保存</button>
+      <button class="ghost" id="g_cancel">取消</button></div>`);
+
+    function renderSteps() {
+      const box = $('#g_steps');
+      box.innerHTML = '';
+      s.steps.forEach((st, i) => {
+        const div = document.createElement('div');
+        div.className = 'row';
+        div.innerHTML = `<label>pKa${i + 1}</label>
+          <input type="number" step="0.01" value="${st.pKa}" data-step-pka="${i}" style="width:80px">
+          <label>电荷</label>
+          <input type="number" step="1" value="${st.zA}" data-step-za="${i}" style="width:60px"> →
+          <input type="number" step="1" value="${st.zB}" data-step-zb="${i}" style="width:60px">
+          ${s.steps.length > 1 ? `<button class="ghost small danger" data-del-step="${i}">删</button>` : ''}`;
+        box.appendChild(div);
+      });
+      box.querySelectorAll('[data-step-pka], [data-step-za], [data-step-zb]').forEach(inp => inp.addEventListener('change', () => {
+        const i = +(inp.dataset.stepPka ?? inp.dataset.stepZa ?? inp.dataset.stepZb);
+        s.steps[i].pKa = parseFloat(box.querySelector(`[data-step-pka="${i}"]`).value);
+        s.steps[i].zA = parseInt(box.querySelector(`[data-step-za="${i}"]`).value) || 0;
+        s.steps[i].zB = parseInt(box.querySelector(`[data-step-zb="${i}"]`).value) || 0;
+      }));
+      box.querySelectorAll('[data-del-step]').forEach(b => b.addEventListener('click', () => {
+        s.steps.splice(+b.dataset.delStep, 1); renderSteps();
+      }));
+    }
+    function renderStocks() {
+      const box = $('#g_stocks');
+      box.innerHTML = '';
+      (s.stocks || []).forEach((x, i) => {
+        const div = document.createElement('div');
+        div.className = 'row';
+        div.innerHTML = `<select data-gstk="${i}">${stockOpts(x.stockId)}</select>
+          <label>d =</label><input type="number" step="1" min="0" value="${x.dStock}" data-gd="${i}" style="width:60px">
+          <button class="ghost small danger" data-del-gstk="${i}">删</button>`;
+        box.appendChild(div);
+      });
+      box.querySelectorAll('[data-gstk]').forEach(sel => sel.addEventListener('change', () => {
+        s.stocks[+sel.dataset.gstk].stockId = sel.value;
+      }));
+      box.querySelectorAll('[data-gd]').forEach(inp => inp.addEventListener('change', () => {
+        s.stocks[+inp.dataset.gd].dStock = parseInt(inp.value) || 0;
+      }));
+      box.querySelectorAll('[data-del-gstk]').forEach(b => b.addEventListener('click', () => {
+        s.stocks.splice(+b.dataset.delGstk, 1); renderStocks();
+      }));
+    }
+    renderSteps(); renderStocks();
+    $('#g_addstep').addEventListener('click', () => {
+      const last = s.steps[s.steps.length - 1];
+      s.steps.push({ pKa: last.pKa + 2, zA: last.zB, zB: last.zB - 1 });
+      renderSteps();
+    });
+    $('#g_addstock').addEventListener('click', () => {
+      if (!DB.stocks.length) { alert('请先新增母液'); return; }
+      s.stocks = s.stocks || [];
+      s.stocks.push({ stockId: DB.stocks[0].id, dStock: s.stocks.length });
+      renderStocks();
+    });
+    $('#g_cancel').addEventListener('click', closeModal);
+    $('#g_save').addEventListener('click', () => {
+      const name = $('#g_name').value.trim();
+      if (!name) { alert('请填写名称'); return; }
+      s.steps = Array.from($('#g_steps').querySelectorAll('[data-step-pka]')).map(inp => {
+        const i = inp.dataset.stepPka;
+        return {
+          pKa: parseFloat(inp.value),
+          zA: parseFloat($('#g_steps').querySelector(`[data-step-za="${i}"]`).value),
+          zB: parseFloat($('#g_steps').querySelector(`[data-step-zb="${i}"]`).value),
+        };
+      });
+      if (!s.steps.length) { alert('至少一个 pKa'); return; }
+      if (s.steps.some((st, i) => !Number.isFinite(st.pKa) ||
+          !Number.isInteger(st.zA) || !Number.isInteger(st.zB) ||
+          st.zB !== st.zA - 1 || (i > 0 && st.zA !== s.steps[i - 1].zB))) {
+        alert('请填写有效 pKa 与整数电荷；每步电荷须减少 1，相邻步骤电荷须连续'); return;
+      }
+      s.name = name;
+      const r0 = parseFloat($('#g_r0').value), r1 = parseFloat($('#g_r1').value);
+      s.range = (isNaN(r0) || isNaN(r1)) ? null : [r0, r1];
+      const r20 = parseFloat($('#g_r20').value), r21 = parseFloat($('#g_r21').value);
+      s.range2 = (isNaN(r20) || isNaN(r21)) ? undefined : [r20, r21];
+      if (isNew) DB.systems.push(s);
+      else DB.systems[DB.systems.findIndex(x => x.id === s.id)] = s;
+      saveDB(); closeModal(); refreshAll();
+    });
+  }
+
+  /* 管理页「实测 pH 记录」汇总：全部卡片的记录集中查看、导出、清理。
+   * 这是阶段性回归校准的数据出口——按卡片分组展示偏差，便于看出偏差规律。 */
+  function renderCalibAdmin() {
+    const box = $('#calibAdmin');
+    if (!box) return;
+    const all = calibAll();
+    if (!all.length) {
+      box.innerHTML = '<div class="empty-state">尚无实测记录。<br>在「缓冲液配制」页配方结果卡的「实测 pH 记录」小节录入；记录随「导出 JSON」一起备份。</div>';
+      return;
+    }
+    const groups = new Map();
+    for (const x of all) {
+      if (!groups.has(x.key)) groups.set(x.key, []);
+      groups.get(x.key).push(x);
+    }
+    let html = `<div class="muted" style="margin-bottom:6px">共 <b>${all.length}</b> 条记录，覆盖 <b>${groups.size}</b> 个「体系+浓度+添加剂+目标pH」组合。偏差 = 实测 − 目标。</div>
+      <div class="row noprint" style="margin-bottom:8px">
+        <button class="ghost" id="btnCalibExportAll">导出全部记录（含配方全文）</button>
+        <button class="ghost" id="btnCalibExportTable">导出偏差表（TSV，便于回归）</button>
+        <button class="ghost" id="btnCalibClear">清空全部实测记录</button>
+      </div>`;
+    for (const [key, rows] of groups) {
+      const devs = rows.map(x => x.measuredPH - x.targetPH);
+      const mean = devs.reduce((a, b) => a + b, 0) / devs.length;
+      const absMean = devs.reduce((a, b) => a + Math.abs(b), 0) / devs.length;
+      const maxAbs = Math.max(...devs.map(Math.abs));
+      html += `<div style="margin-top:10px"><b>${esc(rows[0].label)}</b>
+        <span class="muted">（目标 pH ${rows[0].targetPH}，${rows.length} 条）</span>
+        <div class="muted">平均偏差 ${mean >= 0 ? '+' : ''}${mean.toFixed(3)} pH · 平均绝对偏差 ${absMean.toFixed(3)} pH · 最大绝对偏差 ${maxAbs.toFixed(3)} pH</div>
+        <div style="overflow-x:auto"><table class="res"><tr><th>时间</th><th>实测 pH</th><th>偏差</th><th>温度</th><th>模型</th><th></th></tr>`
+        + rows.slice().reverse().map(x => {
+          const dv = x.measuredPH - x.targetPH;
+          return `<tr><td class="muted">${esc(x.at)}</td><td class="num">${x.measuredPH.toFixed(3)}</td><td class="num">${dv >= 0 ? '+' : ''}${dv.toFixed(3)}</td><td class="num">${x.tempC == null ? '—' : x.tempC}</td><td class="muted">${esc(x.model || '')}</td><td><button class="ghost small" data-calib-del="${esc(x.id)}">删除</button></td></tr>`;
+        }).join('')
+        + `</table></div></div>`;
+    }
+    box.innerHTML = html;
+  }
+
+  function refreshAll() {
+    renderSysPicker($('#t1ASys'), 't1A');
+    renderSysPicker($('#t1BSys'), 't1B');
+    renderAddPicker($('#t1AAdd'), 't1A', false);
+    renderAddPicker($('#t1BAdd'), 't1B', false);
+    renderNeutSelectors();
+    renderStockTable(); renderSysTable();
+    renderCalibHistories(); renderCalibAdmin();
+  }
+
+  function renderCalibHistories() {
+    $$('[data-calib-card]').forEach(card => {
+      const box = card.querySelector('[data-calib-history]');
+      if (!box) return;
+      const rows = calibrationFor(card.dataset.calibKey).slice().reverse();
+      if (!rows.length) { box.innerHTML = ''; return; }
+      const shown = rows.slice(0, 10);
+      box.innerHTML = `<table class="res" style="margin-top:8px"><tr><th>时间</th><th>实测 pH</th><th>偏差</th><th>温度</th><th></th></tr>`
+        + shown.map(x => {
+          const dv = x.measuredPH - x.targetPH;
+          return `<tr><td class="muted">${esc(x.at)}</td><td class="num">${x.measuredPH.toFixed(3)}</td>`
+            + `<td class="num">${dv >= 0 ? '+' : ''}${dv.toFixed(3)}</td>`
+            + `<td class="num">${x.tempC == null ? '—' : x.tempC}</td>`
+            + `<td><button class="ghost small" data-calib-del="${esc(x.id)}">删除</button></td></tr>`;
+        }).join('')
+        + `</table>${rows.length > shown.length ? `<div class="muted">仅显示最近 ${shown.length} 条，共 ${rows.length} 条；完整数据在管理页「实测 pH 记录」。</div>` : ''}`;
+    });
+  }
+  function calibRecord(side) {
+    const card = document.querySelector(`[data-calib-card="${side}"]`);
+    if (!card) return;
+    const pHInput = card.querySelector(`[data-calib-ph="${side}"]`);
+    const measured = parseFloat(pHInput.value);
+    if (!Number.isFinite(measured) || measured < 0 || measured > 14) {
+      alert('请填写 0–14 之间的实测 pH。');
+      pHInput.focus();
+      return;
+    }
+    const tempRaw = parseFloat((card.querySelector(`[data-calib-temp="${side}"]`) || {}).value);
+    const target = parseFloat(card.dataset.calibTarget);
+    const text = (card.querySelector(`[data-calib-text="${side}"]`) || {}).value || '';
+    const rec = {
+      id: 'c' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
+      key: card.dataset.calibKey,
+      label: (document.querySelector(`[data-buffer-name="${side}"]`) || {}).textContent || side,
+      targetPH: target,
+      measuredPH: measured,
+      tempC: Number.isFinite(tempRaw) ? tempRaw : null,
+      at: new Date().toISOString().slice(0, 16).replace('T', ' '),
+      model: currentModel(),
+      text,
+    };
+    addCalibrationRecord(rec);
+    pHInput.value = '';
+    const tIn = card.querySelector(`[data-calib-temp="${side}"]`);
+    if (tIn) tIn.value = '';
+    renderCalibHistories();
+    const box = card.querySelector('[data-calib-history]');
+    if (box) box.insertAdjacentHTML('afterbegin', `<div class="muted" style="margin-top:6px">已记录：实测 ${measured.toFixed(3)}，偏差 ${(measured - target) >= 0 ? '+' : ''}${(measured - target).toFixed(3)} pH（共 ${calibrationFor(card.dataset.calibKey).length} 条）</div>`);
+    renderCalibAdmin();
+  }
+
+  /* ---------- 管理页事件（事件委托） ---------- */
+  document.addEventListener('click', e => {
+    const t = e.target;
+    if (t.dataset && (t.dataset.copy_ || t.dataset.copy || t.dataset.copyName || t.dataset.copy_name)) { // 结果区复制按钮
+      const nm = t.dataset.copyName || t.dataset.copy_name;
+      const cp = t.dataset.copy || t.dataset.copy_;
+      const txt = nm ? lastName[nm] : lastCopy[cp];
+      if (txt) navigator.clipboard.writeText(txt).then(() => {
+        const orig = t.textContent;
+        t.textContent = '已复制 ✓';
+        setTimeout(() => { t.textContent = orig; }, 1500);
+      }).catch(() => { alert('复制失败，请允许浏览器访问剪贴板，或手动选中结果复制。'); });
+      return;
+    }
+    if (t.dataset && t.dataset.calibSave) { calibRecord(t.dataset.calibSave); return; }
+    if (t.dataset && t.dataset.calibDel) {
+      if (confirm('删除这条实测记录？')) { deleteCalibrationRecord(t.dataset.calibDel); renderCalibHistories(); renderCalibAdmin(); }
+      return;
+    }
+    if (t.dataset && t.dataset.calibExport) {
+      const side = t.dataset.calibExport;
+      const card = document.querySelector(`[data-calib-card="${side}"]`);
+      if (!card) return;
+      const rows = calibrationFor(card.dataset.calibKey);
+      if (!rows.length) { alert('该卡片还没有实测记录。'); return; }
+      downloadText(`实测pH记录-${side}-${new Date().toISOString().slice(0, 10)}.txt`, calibrationTSV(rows, true));
+      return;
+    }
+    if (t.dataset && t.dataset.editStock) stockForm(DB.stocks.find(s => s.id === t.dataset.editStock));
+    if (t.dataset && t.dataset.delStock) {
+      const s = stockById(t.dataset.delStock);
+      const usedBy = DB.systems.filter(x => (x.stocks || []).some(y => y.stockId === s.id) || x.stockId === s.id).map(x => x.name);
+      const msg = usedBy.length
+        ? `母液「${s.name}」正被体系「${usedBy.join('、')}」使用，删除后这些体系将缺母液。确认删除？`
+        : `确认删除母液「${s.name}」？`;
+      if (confirm(msg)) {
+        markDeletedDefault('stocks', s.id);
+        DB.stocks = DB.stocks.filter(x => x.id !== s.id);
+        DB.systems.forEach(x => { x.stocks = (x.stocks || []).filter(y => y.stockId !== s.id); });
+        saveDB(); refreshAll();
+      }
+    }
+    if (t.dataset && t.dataset.editSys) {
+      const s = DB.systems.find(x => x.id === t.dataset.editSys);
+      if (s && !s.premix) sysForm(s);
+    }
+    if (t.dataset && t.dataset.delSys) {
+      const s = DB.systems.find(x => x.id === t.dataset.delSys);
+      if (confirm(`确认删除缓冲体系「${s.name}」？`)) {
+        markDeletedDefault('systems', s.id);
+        DB.systems = DB.systems.filter(x => x.id !== s.id);
+        saveDB(); refreshAll();
+      }
+    }
+  });
+  $('#btnAddStock').addEventListener('click', () => stockForm(null));
+  $('#btnAddSys').addEventListener('click', () => sysForm(null));
+  $('#btnExport').addEventListener('click', () => {
+    const blob = new Blob([JSON.stringify(DB, null, 2)], { type: 'application/json' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'buffer-calculator-db.json';
+    a.click();
+    URL.revokeObjectURL(a.href);
+  });
+  // 实测记录：汇总导出与清理（按钮由 renderCalibAdmin 生成）
+  document.addEventListener('click', e => {
+    const t = e.target;
+    const stamp = new Date().toISOString().slice(0, 10);
+    if (t.id === 'btnCalibExportAll') {
+      const all = calibAll();
+      if (!all.length) { alert('尚无实测记录。'); return; }
+      downloadText(`实测pH记录-全部-${stamp}.txt`, calibrationTSV(all, true));
+    } else if (t.id === 'btnCalibExportTable') {
+      const all = calibAll();
+      if (!all.length) { alert('尚无实测记录。'); return; }
+      downloadText(`实测pH偏差表-${stamp}.tsv`, calibrationTSV(all, false));
+    } else if (t.id === 'btnCalibClear') {
+      const n = calibAll().length;
+      if (!n) { alert('尚无实测记录。'); return; }
+      if (confirm(`确认清空全部 ${n} 条实测记录？此操作不可恢复，建议先「导出全部记录」。`)) {
+        DB.calibration = []; saveDB(); renderCalibHistories(); renderCalibAdmin();
+      }
+    }
+  });
+  $('#btnImport').addEventListener('click', () => $('#fileImport').click());
+  $('#fileImport').addEventListener('change', e => {
+    const f = e.target.files[0];
+    if (!f) return;
+    const rd = new FileReader();
+    rd.onload = () => {
+      try {
+        const d = JSON.parse(rd.result);
+        if (!d || !Array.isArray(d.stocks) || !Array.isArray(d.systems)) throw new Error('格式不正确');
+        DB = d; saveDB(); refreshAll();
+        alert('导入成功');
+      } catch (err) { alert('导入失败：' + err.message); }
+      e.target.value = '';
+    };
+    rd.readAsText(f);
+  });
+  $('#btnReset').addEventListener('click', () => {
+    const nCal = calibAll().length;
+    if (confirm(`确认恢复出厂默认？你的全部自定义修改将丢失${nCal ? `；⚠ 已记录的 ${nCal} 条实测 pH 数据也会一并清除` : ''}（可先导出备份）。`)) {
+      DB = JSON.parse(JSON.stringify({ stocks: DefaultDB.stocks, systems: DefaultDB.systems }));
+      saveDB(); refreshAll();
+    }
+  });
+
+  /* ---------- 绑定 ---------- */
+  $('#btnCalc').addEventListener('click', computeRecipe);
+  $('#btnNeut').addEventListener('click', computeNeutralization);
+  $('#allowTitrant').addEventListener('change', () => {
+    $('#titrantConcRow').style.display = $('#allowTitrant').checked ? '' : 'none';
+  });
+  function paintFracRange() {
+    const low=$('#numFracBLo'),high=$('#numFracB'),a=parseFloat(low.value),b=parseFloat(high.value);
+    const invalid=!Number.isFinite(a)||!Number.isFinite(b)||a<0||b>100||a>b;
+    low.setAttribute('aria-invalid',invalid?'true':'false');high.setAttribute('aria-invalid',invalid?'true':'false');
+    $('.dual-range').classList.toggle('range-invalid',invalid);
+    if(!Number.isFinite(a)||!Number.isFinite(b))return;
+    const left=Math.max(0,Math.min(100,Math.min(a,b))),right=Math.max(0,Math.min(100,Math.max(a,b)));
+    $('#fracRangeFill').style.left=left+'%';$('#fracRangeFill').style.width=(right-left)+'%';
+  }
+  function syncFracRange(changed,commit=false) {
+    const isLow=changed.id.endsWith('Lo'),isSlider=changed.type==='range';
+    const low=$('#numFracBLo'),high=$('#numFracB'),lowSl=$('#slFracBLo'),highSl=$('#slFracB');
+    const ownNum=isLow?low:high,otherNum=isLow?high:low,ownSlider=isLow?lowSl:highSl;
+    let v=parseFloat(changed.value);if(!Number.isFinite(v)){paintFracRange();return;}
+    const clamp=x=>Math.max(0,Math.min(100,x));
+    if(isSlider) {
+      const other=parseFloat(otherNum.value);
+      v=clamp(v);
+      if(Number.isFinite(other))v=isLow?Math.min(v,other):Math.max(v,other);
+      ownSlider.value=v;ownNum.value=v;
+    } else {
+      if(commit) {
+        v=clamp(v);
+        ownNum.value=v;
+      }
+      ownSlider.value=clamp(v);
+    }
+    paintFracRange();
+  }
+  for(const id of ['slFracBLo','slFracB','numFracBLo','numFracB']) $('#'+id).addEventListener('input',e=>syncFracRange(e.target));
+  for(const id of ['numFracBLo','numFracB']) $('#'+id).addEventListener('change',e=>syncFracRange(e.target,true));
+  syncFracRange($('#numFracBLo'));
+  function markRecipeDirty() {
+    if(!recipeStarted || $('#recipePending'))return;
+    $('#resultZone').insertAdjacentHTML('afterbegin','<div class="warnbox" id="recipePending" role="status">配制条件已修改，请点击「计算」更新。下方结果仍对应上一次计算条件。</div>');
+  }
+  function markNeutralizationDirty() {
+    if(!neutStarted)return;
+    ++neutRun;
+    setNeutBusy(false); // 取消进行中的计算后恢复按钮，避免一直停留在「计算中…」
+    const pane=$('#neutZone');
+    if($('#neutPending'))return;
+    const warning='<div class="warnbox" id="neutPending" role="status">中和条件已修改，请点击「计算」更新。下方若有结果，仍对应上一次计算条件。</div>';
+    if(pane.querySelector('#neutChart')||pane.querySelector('#neutRangeResult'))pane.insertAdjacentHTML('afterbegin',warning);
+    else pane.innerHTML=warning;
+  }
+  for(const eventName of ['input','change']) {
+    $('#t1').addEventListener(eventName,markRecipeDirty);
+    $('#t2').addEventListener(eventName,markNeutralizationDirty);
+  }
+  bindSlider('#slPH', '#numPH', { min: 4, max: 9, dec: 2 });
+  bindSlider('#slVol', '#numVol', { min: VOL_MIN, max: VOL_MAX, log: true });
+  $('#slVol').value = sliderFromVol(10);
+  // 中和试剂来源切换：现有母液 / 自定义
+  $$('input[name=titrantSrc]').forEach(r => r.addEventListener('change', () => {
+    const custom = (document.querySelector('input[name=titrantSrc]:checked') || {}).value === 'custom';
+    $('#nTitrantStockRow').style.display = custom ? 'none' : '';
+    $('#nTitrantCustom').style.display = custom ? '' : 'none';
+  }));
+
+  refreshAll();
+})();
+
+
+</script>
+</body>
+</html>
