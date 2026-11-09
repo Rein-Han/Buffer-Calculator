@@ -1,0 +1,24 @@
+{
+  "schemaVersion": 1,
+  "apiVersion": "1.1",
+  "id": "com.reinhan.buffer-calculator",
+  "name": "缓冲液计算器",
+  "version": "2.0.0",
+  "description": "依赖实验工具箱的缓冲液配制、洗脱中和与实测记录插件",
+  "author": "Rein-Han",
+  "entry": "index.html",
+  "permissions": [
+    "storage",
+    "files.save",
+    "clipboard.write",
+    "printing"
+  ],
+  "contributes": {
+    "views": [
+      {
+        "id": "main",
+        "title": "缓冲液计算器"
+      }
+    ]
+  }
+}

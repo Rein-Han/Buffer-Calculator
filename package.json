@@ -1,0 +1,17 @@
+{
+  "name": "buffer-calculator",
+  "version": "2.0.0",
+  "private": true,
+  "description": "Experiment Tool Kit plugin: buffer preparation, elution neutralization and measured-pH records",
+  "scripts": {
+    "build": "node build.js",
+    "test": "node test_engine.js && node test_models.js && node test_regressions.js && node test_low_ph_arg.js && node test_acetate_nacl.js && node test_acetate_arg.js && node test_neut_curve.js && node test_acid_direction.js",
+    "test:plugin:unit": "node --test test_plugin_unit.cjs",
+    "test:ui": "node test_ui.cjs && node test_ui_models.cjs && node test_neut_curve_ui.cjs",
+    "test:plugin": "node test_plugin_integration.cjs",
+    "test:plugin:all": "npm run test:plugin:unit && npm run test:ui && npm run test:plugin"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}
